@@ -1,0 +1,66 @@
+# STM32 项目 .gitignore 文件
+
+# Keil MDK-ARM 编译输出文件
+MDK-ARM/Objects/
+MDK-ARM/Listings/
+MDK-ARM/RTE/
+MDK-ARM/DebugConfig/
+MDK-ARM/*.uvguix*
+MDK-ARM/*.uvoptx
+MDK-ARM/*.bak
+MDK-ARM/*.dep
+MDK-ARM/*.axf
+MDK-ARM/*.bin
+MDK-ARM/*.elf
+MDK-ARM/*.hex
+MDK-ARM/*.htm
+MDK-ARM/*.lnp
+MDK-ARM/*.lst
+MDK-ARM/*.map
+MDK-ARM/*.o
+MDK-ARM/*.d
+MDK-ARM/*.crf
+MDK-ARM/*.mk
+MDK-ARM/*.tra
+MDK-ARM/*.plg
+MDK-ARM/*.tmp
+MDK-ARM/EventRecorderStub.scvd
+
+# J-Link 调试文件
+MDK-ARM/JLinkLog.txt
+MDK-ARM/JLinkSettings.ini
+
+# 用户特定的配置文件
+*.uvguix*
+*.uvoptx
+
+# 编译生成的文件
+*.o
+*.d
+*.axf
+*.bin
+*.elf
+*.hex
+*.map
+*.lst
+
+# 临时文件
+*.tmp
+*.bak
+*~
+
+# IDE 生成的文件
+.vscode/
+.idea/
+
+# 系统文件
+Thumbs.db
+.DS_Store
+
+# 日志文件
+*.log
+
+# 保留的重要文件说明：
+# project_1.uvprojx - Keil 项目文件 (保留)
+# project_1.ioc - STM32CubeMX 配置文件 (保留)
+# startup_stm32f103xb.s - 启动文件 (保留)
