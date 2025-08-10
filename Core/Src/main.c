@@ -62,7 +62,9 @@ extern RFParams_t g_rf_params;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-
+// 数据采集和处理函数声明
+void ProcessPowerMeasurement(void);     // 处理功率测量
+void ProcessRFParameters(void);         // 处理射频参数计算
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -102,12 +104,15 @@ int main(void)
   MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_ADC1_Init();
-  //MX_IWDG_Init();
+  MX_IWDG_Init();
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
+  //HAL_TIM_Base_Start_IT(&htim2);          //使能中断
+  HAL_TIM_Base_Start_IT(&htim3);          //使能中断
+  //HAL_TIM_Base_Start_IT(&htim4);          //使能中断
   // 初始化LCD
   LCD_Init();
   LCD_SetBacklight(8000);  // 设置背光亮度为80%
@@ -116,68 +121,23 @@ int main(void)
   // 执行系统启动序列
   System_BootSequence();
 
+  // 启动完成后第一次喂狗
+  HAL_IWDG_Refresh(&hiwdg);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    static uint32_t last_adc_time = 0;
-    static uint32_t last_calc_time = 0;
-    uint32_t current_time = HAL_GetTick();
+    // 主循环开始时喂狗
+    HAL_IWDG_Refresh(&hiwdg);
 
-    // 每100ms读取一次ADC (功率检测)
-    if (current_time - last_adc_time >= 100) {
-      last_adc_time = current_time;
+    // 处理功率测量
+    ProcessPowerMeasurement();
 
-      // 启动ADC转换
-      HAL_ADC_Start(&hadc1);
-
-      // 读取PA2 (正向功率)
-      HAL_ADC_PollForConversion(&hadc1, 10);
-      uint32_t adc_forward = HAL_ADC_GetValue(&hadc1);
-
-      // 读取PA3 (反射功率)
-      HAL_ADC_PollForConversion(&hadc1, 10);
-      uint32_t adc_reflected = HAL_ADC_GetValue(&hadc1);
-
-      HAL_ADC_Stop(&hadc1);
-
-      // 转换为电压值 (3.3V参考电压，12位ADC)
-      float forward_voltage = (float)adc_forward * 3.3f / 4095.0f;
-      float reflected_voltage = (float)adc_reflected * 3.3f / 4095.0f;
-
-      // 转换为功率值 (根据你的硬件标定，这里是示例公式)
-      float forward_power = forward_voltage * 10.0f;    // 示例：10W/V
-      float reflected_power = reflected_voltage * 10.0f;
-
-      // 更新功率数据到界面管理器
-      InterfaceManager_UpdatePower(forward_power, reflected_power);
-    }
-
-    // 每200ms计算一次射频参数
-    if (current_time - last_calc_time >= 200) {
-      last_calc_time = current_time;
-
-      // 计算射频参数
-      if (g_power_result.is_valid && g_power_result.forward_power > 0.01f) {
-        // 计算反射系数 Γ = √(Pr/Pi)
-        float reflection_coeff = sqrtf(g_power_result.reflected_power / g_power_result.forward_power);
-
-        // 计算驻波比 VSWR = (1 + |Γ|) / (1 - |Γ|)
-        float vswr = (1.0f + reflection_coeff) / (1.0f - reflection_coeff);
-        if (vswr < 1.0f) vswr = 1.0f;  // VSWR最小值为1
-        if (vswr > 10.0f) vswr = 10.0f; // 限制最大值
-
-        // 计算传输效率 η = 1 - Pr/Pi
-        float transmission_eff = (1.0f - g_power_result.reflected_power / g_power_result.forward_power) * 100.0f;
-        if (transmission_eff < 0.0f) transmission_eff = 0.0f;
-        if (transmission_eff > 100.0f) transmission_eff = 100.0f;
-
-        // 更新射频参数到界面管理器
-        InterfaceManager_UpdateRFParams(vswr, reflection_coeff, transmission_eff);
-      }
-    }
+    // 处理射频参数计算
+    ProcessRFParameters();
 
     // 处理界面管理器 (包括显示更新和按键处理)
     InterfaceManager_Process();
@@ -187,6 +147,9 @@ int main(void)
       // 频率结果会在界面显示中自动获取
       FreqCounter_ClearNewResultFlag();
     }
+
+    // 界面处理完成后喂狗
+    HAL_IWDG_Refresh(&hiwdg);
 
     // 短暂延时
     HAL_Delay(10);
@@ -246,6 +209,77 @@ void SystemClock_Config(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+/**
+ * @brief 处理功率测量
+ */
+void ProcessPowerMeasurement(void)
+{
+    static uint32_t last_adc_time = 0;
+    uint32_t current_time = HAL_GetTick();
+
+    // 每100ms读取一次ADC (功率检测)
+    if (current_time - last_adc_time >= 100) {
+        last_adc_time = current_time;
+
+        // 启动ADC转换
+        HAL_ADC_Start(&hadc1);
+
+        // 读取PA2 (正向功率)
+        HAL_ADC_PollForConversion(&hadc1, 10);
+        uint32_t adc_forward = HAL_ADC_GetValue(&hadc1);
+
+        // 读取PA3 (反射功率)
+        HAL_ADC_PollForConversion(&hadc1, 10);
+        uint32_t adc_reflected = HAL_ADC_GetValue(&hadc1);
+
+        HAL_ADC_Stop(&hadc1);
+
+        // 转换为电压值 (3.3V参考电压，12位ADC)
+        float forward_voltage = (float)adc_forward * 3.3f / 4095.0f;
+        float reflected_voltage = (float)adc_reflected * 3.3f / 4095.0f;
+
+        // 转换为功率值 (根据你的硬件标定，这里是示例公式)
+        float forward_power = forward_voltage * 10.0f;    // 示例：10W/V
+        float reflected_power = reflected_voltage * 10.0f;
+
+        // 更新功率数据到界面管理器
+        InterfaceManager_UpdatePower(forward_power, reflected_power);
+    }
+}
+
+/**
+ * @brief 处理射频参数计算
+ */
+void ProcessRFParameters(void)
+{
+    static uint32_t last_calc_time = 0;
+    uint32_t current_time = HAL_GetTick();
+
+    // 每200ms计算一次射频参数
+    if (current_time - last_calc_time >= 200) {
+        last_calc_time = current_time;
+
+        // 计算射频参数
+        if (g_power_result.is_valid && g_power_result.forward_power > 0.01f) {
+            // 计算反射系数 Γ = √(Pr/Pi)
+            float reflection_coeff = sqrtf(g_power_result.reflected_power / g_power_result.forward_power);
+
+            // 计算驻波比 VSWR = (1 + |Γ|) / (1 - |Γ|)
+            float vswr = (1.0f + reflection_coeff) / (1.0f - reflection_coeff);
+            if (vswr < 1.0f) vswr = 1.0f;  // VSWR最小值为1
+            if (vswr > 10.0f) vswr = 10.0f; // 限制最大值
+
+            // 计算传输效率 η = 1 - Pr/Pi
+            float transmission_eff = (1.0f - g_power_result.reflected_power / g_power_result.forward_power) * 100.0f;
+            if (transmission_eff < 0.0f) transmission_eff = 0.0f;
+            if (transmission_eff > 100.0f) transmission_eff = 100.0f;
+
+            // 更新射频参数到界面管理器
+            InterfaceManager_UpdateRFParams(vswr, reflection_coeff, transmission_eff);
+        }
+    }
+}
 
 /* USER CODE END 4 */
 

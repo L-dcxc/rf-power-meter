@@ -1030,6 +1030,16 @@
               <FileType>1</FileType>
               <FilePath>..\my_core\interface_manager.c</FilePath>
             </File>
+            <File>
+              <FileName>eeprom_24c16.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\eeprom_24c16.c</FilePath>
+            </File>
+            <File>
+              <FileName>soft_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\soft_i2c.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

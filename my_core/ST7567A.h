@@ -66,7 +66,7 @@ void Show_Str(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, uint8_t *str, ui
 void GUI_DrawFont16(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, uint8_t *s, uint8_t mode);
 void Show_Chinese(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, char* text, uint8_t size, uint8_t mode);
 
-// »æÍ¼º¯ÊıÉùÃ÷
+// ???????????
 void LCD_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 void LCD_DrawRectangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);
 void LCD_Fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color);

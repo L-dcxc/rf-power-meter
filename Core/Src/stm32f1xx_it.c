@@ -53,6 +53,10 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
+// 按键检测全局变量
+uint8_t g_key_pressed_flag = 0;
+uint8_t g_current_key_value = 0;
+
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -304,6 +308,24 @@ void USART1_IRQHandler(void)
 }
 
 /* USER CODE BEGIN 1 */
+
+// 外部变量声明
+extern uint8_t g_key_pressed_flag;
+extern uint8_t g_current_key_value;
+
+/**
+ * @brief 获取按键值
+ * @return 按键值：0=无按键, 1=UP, 2=DOWN, 3=OK
+ */
+uint8_t GetKeyValue(void)
+{
+  // 从TIM3中断获取按键状态
+  if (g_key_pressed_flag) {
+    g_key_pressed_flag = 0;  // 清除标志
+    return g_current_key_value;
+  }
+  return 0;  // 无按键
+}
 /**
  * @brief TIM中断周期回调函数
  * @param htim: 定时器句柄指针
@@ -316,9 +338,46 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     FreqCounter_TIM4_Callback(htim);
   }
 
-  // TIM2溢出中断回调
+  // TIM2捕获中断回调
   if (htim->Instance == TIM2) {
     FreqCounter_TIM2_Callback(htim);
+  }
+
+  // TIM3中断回调 (按键检测)
+  if (htim->Instance == TIM3) {
+    static uint8_t key_count = 0;
+    static uint8_t key_debounce_count = 0;
+    static uint8_t last_key_state = 0;
+
+    key_count++;
+    if (key_count >= 20) {  // 20ms到了
+      key_count = 0;
+
+      // 读取按键状态
+      uint8_t key_state = 0;  // 0=无按键
+      if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET) {
+        key_state = 1;  // UP键
+      } else if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_13) == GPIO_PIN_RESET) {
+        key_state = 3;  // OK键
+      } else if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14) == GPIO_PIN_RESET) {
+        key_state = 2;  // DOWN键
+      }
+
+      // 消抖处理
+      if (key_state == last_key_state) {
+        if (key_state != 0 && key_debounce_count == 0) {
+          // 按键按下且消抖完成
+          g_key_pressed_flag = 1;
+          g_current_key_value = key_state;
+          key_debounce_count = 1;  // 开始消抖计数
+        } else if (key_state == 0) {
+          key_debounce_count = 0;  // 按键释放，清除消抖
+        }
+      } else {
+        last_key_state = key_state;
+        key_debounce_count = 0;
+      }
+    }
   }
 }
 /* USER CODE END 1 */
