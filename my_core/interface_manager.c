@@ -12,9 +12,29 @@
 #include <string.h>
 
 /* 全局变量定义 */
-InterfaceManager_t g_interface_manager = {0};
-PowerResult_t g_power_result = {0};
-RFParams_t g_rf_params = {0};
+InterfaceManager_t g_interface_manager = {
+    .current_interface = INTERFACE_MAIN,
+    .menu_cursor = 0,
+    .brightness_level = 8,
+    .alarm_enabled = 1,
+    .vswr_alarm_threshold = 3.0f,
+    .last_update_time = 0,
+    .need_refresh = 1
+};
+PowerResult_t g_power_result = {
+    .forward_power = 0.0f,
+    .reflected_power = 0.0f,
+    .forward_unit = POWER_UNIT_W,
+    .reflected_unit = POWER_UNIT_W,
+    .is_valid = 0
+};
+RFParams_t g_rf_params = {
+    .vswr = 1.0f,
+    .reflection_coeff = 0.0f,
+    .transmission_eff = 100.0f,
+    .vswr_color = VSWR_COLOR_GREEN,
+    .is_valid = 0
+};
 
 /* 菜单表定义 */
 const MenuItem_t menu_table[MAX_MENU_ITEMS] = {

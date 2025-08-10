@@ -502,38 +502,38 @@ void GUI_DrawFont16(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, uint8_t *s
  * @retvalue   :None
 ******************************************************************************/
 void Show_Chinese(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, char* text, uint8_t size, uint8_t mode) {
-    // ??????????? - ??????????????????GB2312????
+    // 中文字符映射表 - 将UTF8字符串映射到GB2312内码
     typedef struct {
         char* utf8_str;
-        uint8_t gb2312_codes[20]; // ???10??????
+        uint8_t gb2312_codes[20]; // 最多10个汉字
     } ChineseMap;
 
     const ChineseMap chinese_map[] = {
-        {"???", {0xC6,0xB5, 0xC2,0xCA, 0x00}},
-        {"???", {0xD7,0xA4, 0xB2,0xA8, 0x00}},
-        {"???", {0xB1,0xC8, 0xD6,0xB5, 0x00}},
-        {"?????", {0xD7,0xA4, 0xB2,0xA8, 0xB1,0xC8, 0x00}},
-        {"????", {0xD5,0xFD, 0xCF,0xF2, 0x00}},
-        {"????", {0xB7,0xB4, 0xC9,0xE4, 0x00}},
-        {"????", {0xB4,0xAB, 0xCA,0xE4, 0x00}},
-        {"Ч??", {0xD0,0xA7, 0xC2,0xCA, 0x00}},
-        {"У?", {0xD0,0xA3, 0xD7,0xBC, 0x00}},
-        {"????", {0xC9,0xE8, 0xD6,0xC3, 0x00}},
-        {"???", {0xB2,0xCB, 0xB5,0xA5, 0x00}},
-        {"????", {0xB7,0xB5, 0xBB,0xD8, 0x00}},
-        {"???", {0xC8,0xB7, 0xC8,0xCF, 0x00}},
-        {"????", {0xB9,0xD8, 0xD3,0xDA, 0x00}},
-        {"????", {0xB1,0xA8, 0xBE,0xAF, 0x00}},
-        {"????", {0xC1,0xC1, 0xB6,0xC8, 0x00}},
-        {"??????", {0xD5,0xFD, 0xCF,0xF2, 0xB9,0xA6, 0xC2,0xCA, 0x00}},
-        {"???书??", {0xB7,0xB4, 0xC9,0xE4, 0xB9,0xA6, 0xC2,0xCA, 0x00}},
-        // ???????????????????...
+        {"频率", {0xC6,0xB5, 0xC2,0xCA, 0x00}},
+        {"驻波", {0xD7,0xA4, 0xB2,0xA8, 0x00}},
+        {"比值", {0xB1,0xC8, 0xD6,0xB5, 0x00}},
+        {"驻波比", {0xD7,0xA4, 0xB2,0xA8, 0xB1,0xC8, 0x00}},
+        {"正向", {0xD5,0xFD, 0xCF,0xF2, 0x00}},
+        {"反射", {0xB7,0xB4, 0xC9,0xE4, 0x00}},
+        {"传输", {0xB4,0xAB, 0xCA,0xE4, 0x00}},
+        {"效率", {0xD0,0xA7, 0xC2,0xCA, 0x00}},
+        {"校准", {0xD0,0xA3, 0xD7,0xBC, 0x00}},
+        {"设置", {0xC9,0xE8, 0xD6,0xC3, 0x00}},
+        {"菜单", {0xB2,0xCB, 0xB5,0xA5, 0x00}},
+        {"返回", {0xB7,0xB5, 0xBB,0xD8, 0x00}},
+        {"确认", {0xC8,0xB7, 0xC8,0xCF, 0x00}},
+        {"关于", {0xB9,0xD8, 0xD3,0xDA, 0x00}},
+        {"报警", {0xB1,0xA8, 0xBE,0xAF, 0x00}},
+        {"亮度", {0xC1,0xC1, 0xB6,0xC8, 0x00}},
+        {"正向功率", {0xD5,0xFD, 0xCF,0xF2, 0xB9,0xA6, 0xC2,0xCA, 0x00}},
+        {"反射功率", {0xB7,0xB4, 0xC9,0xE4, 0xB9,0xA6, 0xC2,0xCA, 0x00}},
+        // 可以继续添加更多映射...
     };
 
     uint8_t map_count = sizeof(chinese_map) / sizeof(ChineseMap);
     uint8_t i;
 
-    // ?????????????????
+    // 查找匹配的中文字符串
     for (i = 0; i < map_count; i++) {
         if (strcmp(text, chinese_map[i].utf8_str) == 0) {
             Show_Str(x, y, fc, bc, (uint8_t*)chinese_map[i].gb2312_codes, size, mode);
@@ -541,8 +541,97 @@ void Show_Chinese(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, char* text, 
         }
     }
 
-    // ???????????????"???"
+    // 如果没找到，显示"未知"
     uint8_t unknown[] = {'?', '?', '?', 0x00};
     Show_Str(x, y, RED, BLACK, unknown, size, mode);
 }
 /* USER CODE END 5 */
+
+/* USER CODE BEGIN 6 */
+/*****************************************************************************
+ * @name       :void LCD_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+ * @date       :2025-01-10
+ * @function   :Draw a line between two points
+ * @parameters :x1,y1: start point coordinates
+ *              x2,y2: end point coordinates
+ * @retvalue   :None
+ ******************************************************************************/
+void LCD_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+{
+    uint16_t t;
+    int xerr=0,yerr=0,delta_x,delta_y,distance;
+    int incx,incy,uRow,uCol;
+    delta_x=x2-x1;
+    delta_y=y2-y1;
+    uRow=x1;
+    uCol=y1;
+    if(delta_x>0)incx=1;
+    else if(delta_x==0)incx=0;
+    else {incx=-1;delta_x=-delta_x;}
+    if(delta_y>0)incy=1;
+    else if(delta_y==0)incy=0;
+    else{incy=-1;delta_y=-delta_y;}
+    if( delta_x>delta_y)distance=delta_x;
+    else distance=delta_y;
+    for(t=0;t<=distance+1;t++ )
+    {
+        LCD_DrawPoint(uRow,uCol);
+        xerr+=delta_x ;
+        yerr+=delta_y ;
+        if(xerr>distance)
+        {
+            xerr-=distance;
+            uRow+=incx;
+        }
+        if(yerr>distance)
+        {
+            yerr-=distance;
+            uCol+=incy;
+        }
+    }
+}
+
+/*****************************************************************************
+ * @name       :void LCD_DrawRectangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+ * @date       :2025-01-10
+ * @function   :Draw a rectangle
+ * @parameters :x1,y1: top-left corner coordinates
+ *              x2,y2: bottom-right corner coordinates
+ * @retvalue   :None
+ ******************************************************************************/
+void LCD_DrawRectangle(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2)
+{
+    LCD_DrawLine(x1,y1,x2,y1);
+    LCD_DrawLine(x1,y1,x1,y2);
+    LCD_DrawLine(x1,y2,x2,y2);
+    LCD_DrawLine(x2,y1,x2,y2);
+}
+
+/*****************************************************************************
+ * @name       :void LCD_Fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+ * @date       :2025-01-10
+ * @function   :Fill a rectangular area with specified color
+ * @parameters :x1,y1: top-left corner coordinates
+ *              x2,y2: bottom-right corner coordinates
+ *              color: fill color
+ * @retvalue   :None
+ ******************************************************************************/
+void LCD_Fill(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2, uint16_t color)
+{
+    uint16_t i,j;
+    uint16_t xlen=0;
+
+    if((x1>x2)||(y1>y2))return;
+
+    xlen=x2-x1+1;
+    for(i=y1;i<=y2;i++)
+    {
+        LCD_SetCursor(x1,i);
+        LCD_WriteRAM_Prepare();
+        for(j=0;j<xlen;j++)
+        {
+            LCD_WR_DATA_16Bit(color);
+        }
+    }
+}
+/* USER CODE END 6 */

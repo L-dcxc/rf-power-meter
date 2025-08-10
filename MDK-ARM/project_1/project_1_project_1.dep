@@ -1,6 +1,6 @@
 Dependencies for Project 'project_1', Target 'project_1': (DO NOT MODIFY !)
 F (startup_stm32f103xb.s)(0x689827D0)(--cpu Cortex-M3 -g --apcs=interwork --pd "__MICROLIB SETA 1"-I.\RTE\_project_1-IC:\Users\27115\AppData\Local\Arm\Packs\ARM\CMSIS\5.8.0\CMSIS\Core\Include-IC:\Users\27115\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.2.0\Device\Include--pd "__UVISION_VERSION SETA 525" --pd "_RTE_ SETA 1" --pd "STM32F10X_MD SETA 1"--list startup_stm32f103xb.lst --xref -o project_1\startup_stm32f103xb.o --depend project_1\startup_stm32f103xb.d)
-F (../Core/Src/main.c)(0x689831B6)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ../my_core-I.\RTE\_project_1-IC:\Users\27115\AppData\Local\Arm\Packs\ARM\CMSIS\5.8.0\CMSIS\Core\Include-IC:\Users\27115\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="525" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o project_1\main.o --omf_browse project_1\main.crf --depend project_1\main.d)
+F (../Core/Src/main.c)(0x68983D38)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ../my_core-I.\RTE\_project_1-IC:\Users\27115\AppData\Local\Arm\Packs\ARM\CMSIS\5.8.0\CMSIS\Core\Include-IC:\Users\27115\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="525" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o project_1\main.o --omf_browse project_1\main.crf --depend project_1\main.d)
 I (../Core/Inc/main.h)(0x6896DA36)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x6755AE62)
 I (../Core/Inc/stm32f1xx_hal_conf.h)(0x6896DA36)
@@ -40,7 +40,7 @@ I (../Core/Inc/spi.h)(0x6896DA36)
 I (../Core/Inc/tim.h)(0x6896FBF4)
 I (../Core/Inc/usart.h)(0x6896D75E)
 I (../Core/Inc/gpio.h)(0x67C6FD7E)
-I (../my_core/ST7567A.h)(0x6898334E)
+I (../my_core/ST7567A.h)(0x68983C65)
 I (../my_core/oledfont.h)(0x68972F62)
 I (../my_core/frequency_counter.h)(0x689828DF)
 I (../my_core/interface_manager.h)(0x68982AAE)
@@ -960,8 +960,8 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h)(0x6755AE62)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h)(0x6755AE62)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h)(0x6755AE62)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h)(0x6755AE62)
-F (..\my_core\ST7567A.c)(0x6898336C)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ../my_core-I.\RTE\_project_1-IC:\Users\27115\AppData\Local\Arm\Packs\ARM\CMSIS\5.8.0\CMSIS\Core\Include-IC:\Users\27115\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="525" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o project_1\st7567a.o --omf_browse project_1\st7567a.crf --depend project_1\st7567a.d)
-I (..\my_core\ST7567A.h)(0x6898334E)
+F (..\my_core\ST7567A.c)(0x68983CE0)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ../my_core-I.\RTE\_project_1-IC:\Users\27115\AppData\Local\Arm\Packs\ARM\CMSIS\5.8.0\CMSIS\Core\Include-IC:\Users\27115\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="525" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o project_1\st7567a.o --omf_browse project_1\st7567a.crf --depend project_1\st7567a.d)
+I (..\my_core\ST7567A.h)(0x68983C65)
 I (../Core/Inc/main.h)(0x6896DA36)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x6755AE62)
 I (../Core/Inc/stm32f1xx_hal_conf.h)(0x6896DA36)
@@ -999,7 +999,7 @@ I (../Core/Inc/gpio.h)(0x67C6FD7E)
 I (..\my_core\oledfont.h)(0x68972F62)
 I (../Core/Inc/tim.h)(0x6896FBF4)
 I (C:\Keil_v5\ARM\ARMCC\include\string.h)(0x6025237E)
-F (..\my_core\oledfont.c)(0x68972F62)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ../my_core-I.\RTE\_project_1-IC:\Users\27115\AppData\Local\Arm\Packs\ARM\CMSIS\5.8.0\CMSIS\Core\Include-IC:\Users\27115\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="525" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o project_1\oledfont.o --omf_browse project_1\oledfont.crf --depend project_1\oledfont.d)
+F (..\my_core\oledfont.c)(0x6898390A)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ../my_core-I.\RTE\_project_1-IC:\Users\27115\AppData\Local\Arm\Packs\ARM\CMSIS\5.8.0\CMSIS\Core\Include-IC:\Users\27115\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="525" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o project_1\oledfont.o --omf_browse project_1\oledfont.crf --depend project_1\oledfont.d)
 I (..\my_core\oledfont.h)(0x68972F62)
 I (../Core/Inc/main.h)(0x6896DA36)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x6755AE62)
@@ -1068,7 +1068,7 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h)(0x6755AE62)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h)(0x6755AE62)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h)(0x6755AE62)
 I (../Core/Inc/tim.h)(0x6896FBF4)
-F (..\my_core\interface_manager.c)(0x6898338A)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ../my_core-I.\RTE\_project_1-IC:\Users\27115\AppData\Local\Arm\Packs\ARM\CMSIS\5.8.0\CMSIS\Core\Include-IC:\Users\27115\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="525" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o project_1\interface_manager.o --omf_browse project_1\interface_manager.crf --depend project_1\interface_manager.d)
+F (..\my_core\interface_manager.c)(0x68983CFA)(--c99 -c --cpu Cortex-M3 -D__MICROLIB -g -O3 --apcs=interwork --split_sections -I ../Core/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc -I ../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy -I ../Drivers/CMSIS/Device/ST/STM32F1xx/Include -I ../Drivers/CMSIS/Include -I ../my_core-I.\RTE\_project_1-IC:\Users\27115\AppData\Local\Arm\Packs\ARM\CMSIS\5.8.0\CMSIS\Core\Include-IC:\Users\27115\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.2.0\Device\Include-D__UVISION_VERSION="525" -D_RTE_ -DSTM32F10X_MD -DUSE_HAL_DRIVER -DSTM32F103xB-o project_1\interface_manager.o --omf_browse project_1\interface_manager.crf --depend project_1\interface_manager.d)
 I (..\my_core\interface_manager.h)(0x68982AAE)
 I (../Core/Inc/main.h)(0x6896DA36)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h)(0x6755AE62)
@@ -1102,7 +1102,7 @@ I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_spi.h)(0x6755AE62)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim.h)(0x6755AE62)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_tim_ex.h)(0x6755AE62)
 I (../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_uart.h)(0x6755AE62)
-I (..\my_core\ST7567A.h)(0x6898334E)
+I (..\my_core\ST7567A.h)(0x68983C65)
 I (../Core/Inc/spi.h)(0x6896DA36)
 I (../Core/Inc/gpio.h)(0x67C6FD7E)
 I (..\my_core\oledfont.h)(0x68972F62)
