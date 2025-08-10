@@ -1,8 +1,8 @@
 /**
  * @file frequency_counter.c
  * @brief 频率计功能模块实现文件
- * @author 你的名字
- * @date 2025-01-10
+ * @author 蝙蝠鸭
+ * @date 2025-08-10
  * 
  * 实现原理：
  * 1. TIM2配置为外部时钟模式，PA0输入的脉冲直接作为计数时钟

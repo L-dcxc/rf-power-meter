@@ -32,6 +32,8 @@
 #include "frequency_counter.h"
 #include "interface_manager.h"
 #include <math.h>
+#include "string.h"
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,7 +54,9 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-
+// 外部变量声明
+extern PowerResult_t g_power_result;
+extern RFParams_t g_rf_params;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -98,7 +102,7 @@ int main(void)
   MX_DMA_Init();
   MX_USART1_UART_Init();
   MX_ADC1_Init();
-  MX_IWDG_Init();
+  //MX_IWDG_Init();
   MX_SPI1_Init();
   MX_TIM2_Init();
   MX_TIM3_Init();
@@ -109,46 +113,8 @@ int main(void)
   LCD_SetBacklight(8000);  // 设置背光亮度为80%
   LCD_Clear(BLACK);
 
-  // 显示启动信息
-  Show_Str(30, 50, GREEN, BLACK, (uint8_t*)"射频功率计", 16, 0);
-  Show_Str(40, 70, WHITE, BLACK, (uint8_t*)"启动中...", 14, 0);
-  HAL_Delay(1000);
-
-  // 初始化频率计
-  if (FreqCounter_Init() != 0) {
-    LCD_Clear(BLACK);
-    Show_Str(10, 50, RED, BLACK, (uint8_t*)"频率计初始化失败!", 16, 0);
-    while(1) {
-      HAL_Delay(1000);  // 停止运行
-    }
-  }
-
-  if (FreqCounter_Start() != 0) {
-    LCD_Clear(BLACK);
-    Show_Str(10, 70, RED, BLACK, (uint8_t*)"频率计启动失败!", 16, 0);
-    while(1) {
-      HAL_Delay(1000);  // 停止运行
-    }
-  }
-
-  // 初始化界面管理器
-  if (InterfaceManager_Init() != 0) {
-    LCD_Clear(BLACK);
-    Show_Str(10, 90, RED, BLACK, (uint8_t*)"界面初始化失败!", 16, 0);
-    while(1) {
-      HAL_Delay(1000);  // 停止运行
-    }
-  }
-
-  // 启动PWM (背光控制)
-  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-
-  // 显示启动成功信息
-  LCD_Clear(BLACK);
-  Show_Str(30, 50, GREEN, BLACK, (uint8_t*)"系统启动成功", 16, 0);
-  Show_Str(40, 70, WHITE, BLACK, (uint8_t*)"进入主界面", 14, 0);
-  HAL_Delay(1500);
-  LCD_Clear(BLACK);
+  // 执行系统启动序列
+  System_BootSequence();
 
   /* USER CODE END 2 */
 

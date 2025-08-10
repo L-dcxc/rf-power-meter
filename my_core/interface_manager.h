@@ -1,8 +1,8 @@
 /**
  * @file interface_manager.h
  * @brief 射频功率计界面管理系统头文件
- * @author 你的名字
- * @date 2025-01-10
+ * @author 蝙蝠鸭
+ * @date 2025-08-10
  * 
  * 功能说明：
  * 1. 管理主界面显示（功率、驻波比、频率等参数）
@@ -194,6 +194,9 @@ void Interface_DisplayStandard(void);       // 标定界面显示
 void Interface_DisplayAlarm(void);          // 报警设置界面显示
 void Interface_DisplayBrightness(void);     // 亮度设置界面显示
 void Interface_DisplayAbout(void);          // 关于界面显示
+
+// 系统启动界面
+void System_BootSequence(void);             // 系统启动序列界面
 
 #ifdef __cplusplus
 }

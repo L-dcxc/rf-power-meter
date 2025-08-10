@@ -1,8 +1,8 @@
 /**
  * @file interface_manager.c
  * @brief 射频功率计界面管理系统实现文件
- * @author 你的名字
- * @date 2025-01-10
+ * @author 蝙蝠鸭
+ * @date 2025-08-10
  */
 
 #include "interface_manager.h"
@@ -38,12 +38,12 @@ RFParams_t g_rf_params = {
 
 /* 菜单表定义 */
 const MenuItem_t menu_table[MAX_MENU_ITEMS] = {
-    {INTERFACE_CALIBRATION, INTERFACE_MENU, INTERFACE_STANDARD, Interface_DisplayCalibration, "校准功能"},
-    {INTERFACE_STANDARD, INTERFACE_MENU, INTERFACE_ALARM, Interface_DisplayStandard, "标定设置"},
-    {INTERFACE_ALARM, INTERFACE_MENU, INTERFACE_BRIGHTNESS, Interface_DisplayAlarm, "超限报警"},
-    {INTERFACE_BRIGHTNESS, INTERFACE_MENU, INTERFACE_ABOUT, Interface_DisplayBrightness, "显示亮度"},
-    {INTERFACE_ABOUT, INTERFACE_MENU, INTERFACE_CALIBRATION, Interface_DisplayAbout, "关于设备"},
-    {INTERFACE_MENU, INTERFACE_MAIN, INTERFACE_CALIBRATION, Interface_DisplayMenu, "设置菜单"}
+    {INTERFACE_CALIBRATION, INTERFACE_MENU, INTERFACE_STANDARD, Interface_DisplayCalibration, "Calibration"},
+    {INTERFACE_STANDARD, INTERFACE_MENU, INTERFACE_ALARM, Interface_DisplayStandard, "Settings"},
+    {INTERFACE_ALARM, INTERFACE_MENU, INTERFACE_BRIGHTNESS, Interface_DisplayAlarm, "Alarm Limit"},
+    {INTERFACE_BRIGHTNESS, INTERFACE_MENU, INTERFACE_ABOUT, Interface_DisplayBrightness, "Brightness"},
+    {INTERFACE_ABOUT, INTERFACE_MENU, INTERFACE_CALIBRATION, Interface_DisplayAbout, "About"},
+    {INTERFACE_MENU, INTERFACE_MAIN, INTERFACE_CALIBRATION, Interface_DisplayMenu, "Settings Menu"}
 };
 
 /**
@@ -127,7 +127,7 @@ void InterfaceManager_Process(void)
     KeyValue_t key = InterfaceManager_GetKey();
     if (key != KEY_NONE) {
         InterfaceManager_HandleKey(key, KEY_STATE_PRESSED);
-        InterfaceManager_Beep(50);  // 按键反馈音
+        InterfaceManager_Beep(30);  // 按键反馈音
     }
 }
 
@@ -160,6 +160,26 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             }
             break;
             
+        case INTERFACE_BRIGHTNESS:
+            // 亮度界面按键处理
+            if (key == KEY_UP) {
+                // 返回菜单
+                InterfaceManager_SwitchTo(INTERFACE_MENU);
+            } else if (key == KEY_DOWN) {
+                // 调节亮度 (1-10循环)
+                uint8_t new_level = g_interface_manager.brightness_level + 1;
+                if (new_level > 10) {
+                    new_level = 1;  // 循环到最低亮度
+                    LCD_Fill(11, 76, 138, 84, BLACK);
+                }
+                InterfaceManager_SetBrightness(new_level);
+                g_interface_manager.need_refresh = 1;  // 立即刷新显示
+            } else if (key == KEY_OK) {
+                // 确认当前亮度设置，返回菜单
+                InterfaceManager_SwitchTo(INTERFACE_MENU);
+            }
+            break;
+
         default:
             // 其他界面按键处理
             if (key == KEY_UP) {
@@ -301,10 +321,10 @@ void InterfaceManager_SetBrightness(uint8_t level)
     g_interface_manager.brightness_level = level;
 
     // 计算PWM占空比 (10%-100%)
-    uint16_t duty = 1000 + (level * 900 / 10);
+    uint16_t duty = 99 + (level * 90);
 
     // 设置TIM3 CH3的PWM占空比 (PB0背光控制)
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, duty);
+    LCD_SetBacklight(duty);
 }
 
 /**
@@ -327,14 +347,14 @@ void Interface_DisplayMain(void)
     uint16_t vswr_color;
 
     // 显示标题
-    Show_Str(30, 5, WHITE, BLACK, (uint8_t*)"射频功率计", 16, 0);
+    Show_Str(20, 5, WHITE, BLACK, (uint8_t*)"RF Power Meter", 16, 0);
 
     // 绘制分割线
     LCD_DrawLine(0, 25, 160, 25);
-    LCD_DrawLine(80, 25, 80, 128);
+    LCD_DrawLine(80, 25, 80, 95);
 
     // 左侧显示功率信息
-    Show_Str(5, 30, CYAN, BLACK, (uint8_t*)"正向功率:", 12, 0);
+    Show_Str(5, 30, CYAN, BLACK, (uint8_t*)"Forward:", 12, 0);
     if (g_power_result.is_valid) {
         sprintf(str_buffer, "%.2f %s", g_power_result.forward_power,
                 g_power_result.forward_unit == POWER_UNIT_KW ? "kW" : "W");
@@ -343,7 +363,7 @@ void Interface_DisplayMain(void)
         Show_Str(5, 45, GRAY, BLACK, (uint8_t*)"-- W", 12, 0);
     }
 
-    Show_Str(5, 60, CYAN, BLACK, (uint8_t*)"反射功率:", 12, 0);
+    Show_Str(5, 60, CYAN, BLACK, (uint8_t*)"Reflect:", 12, 0);
     if (g_power_result.is_valid) {
         sprintf(str_buffer, "%.2f %s", g_power_result.reflected_power,
                 g_power_result.reflected_unit == POWER_UNIT_KW ? "kW" : "W");
@@ -353,7 +373,7 @@ void Interface_DisplayMain(void)
     }
 
     // 右侧显示射频参数
-    Show_Str(85, 30, CYAN, BLACK, (uint8_t*)"驻波比:", 12, 0);
+    Show_Str(85, 30, CYAN, BLACK, (uint8_t*)"VSWR:", 12, 0);
     if (g_rf_params.is_valid) {
         // 根据VSWR值选择颜色
         switch (g_rf_params.vswr_color) {
@@ -368,7 +388,7 @@ void Interface_DisplayMain(void)
         Show_Str(85, 45, GRAY, BLACK, (uint8_t*)"--", 12, 0);
     }
 
-    Show_Str(85, 60, CYAN, BLACK, (uint8_t*)"反射系数:", 12, 0);
+    Show_Str(85, 60, CYAN, BLACK, (uint8_t*)"Refl.Coef:", 12, 0);
     if (g_rf_params.is_valid) {
         sprintf(str_buffer, "%.3f", g_rf_params.reflection_coeff);
         Show_Str(85, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
@@ -379,26 +399,26 @@ void Interface_DisplayMain(void)
     // 底部显示传输效率和频率
     LCD_DrawLine(0, 95, 160, 95);
 
-    Show_Str(5, 100, CYAN, BLACK, (uint8_t*)"传输效率:", 12, 0);
+    Show_Str(5, 100, CYAN, BLACK, (uint8_t*)"Efficiency:", 12, 0);
     if (g_rf_params.is_valid) {
         sprintf(str_buffer, "%.1f%%", g_rf_params.transmission_eff);
-        Show_Str(60, 100, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
+        Show_Str(70, 100, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
     } else {
-        Show_Str(60, 100, GRAY, BLACK, (uint8_t*)"--%", 12, 0);
+        Show_Str(70, 100, GRAY, BLACK, (uint8_t*)"--%", 12, 0);
     }
 
-    Show_Str(5, 115, CYAN, BLACK, (uint8_t*)"频率:", 12, 0);
+    Show_Str(5, 115, CYAN, BLACK, (uint8_t*)"Freq:", 12, 0);
     FreqResult_t freq_result;
     if (FreqCounter_GetResult(&freq_result) == 0) {
         sprintf(str_buffer, "%.2f %s", freq_result.frequency_display,
                 FreqCounter_GetUnitString(freq_result.unit));
-        Show_Str(35, 115, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
+        Show_Str(40, 115, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
     } else {
-        Show_Str(35, 115, GRAY, BLACK, (uint8_t*)"-- Hz", 12, 0);
+        Show_Str(40, 115, GRAY, BLACK, (uint8_t*)"-- Hz", 12, 0);
     }
 
     // 显示操作提示
-    Show_Str(100, 115, GRAY, BLACK, (uint8_t*)"OK:菜单", 12, 0);
+    Show_Str(110, 115, GRAY, BLACK, (uint8_t*)"OK:Menu", 12, 0);
 }
 
 /**
@@ -408,15 +428,15 @@ void Interface_DisplayMenu(void)
 {
     char str_buffer[32];
     const char* menu_items[] = {
-        "校准功能",
-        "标定设置",
-        "超限报警",
-        "显示亮度",
-        "关于设备"
+        "Calibration",
+        "Settings",
+        "Alarm Limit",
+        "Brightness",
+        "About"
     };
 
     // 显示标题
-    Show_Str(50, 5, WHITE, BLACK, (uint8_t*)"设置菜单", 16, 0);
+    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Settings Menu", 16, 0);
     LCD_DrawLine(0, 25, 160, 25);
 
     // 显示菜单项
@@ -425,11 +445,11 @@ void Interface_DisplayMenu(void)
         uint16_t bg_color = (i == g_interface_manager.menu_cursor) ? BLUE : BLACK;
 
         sprintf(str_buffer, "> %s", menu_items[i]);
-        Show_Str(10, 35 + i * 18, color, bg_color, (uint8_t*)str_buffer, 14, 0);
+        Show_Str(10, 35 + i * 18, color, bg_color, (uint8_t*)str_buffer, 16, 0);
     }
 
     // 显示操作提示
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"↑:返回 ↓:切换 OK:确认", 12, 0);
+    //Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back DN:Next OK:Enter", 12, 0);
 }
 
 /**
@@ -437,16 +457,16 @@ void Interface_DisplayMenu(void)
  */
 void Interface_DisplayCalibration(void)
 {
-    Show_Str(50, 5, WHITE, BLACK, (uint8_t*)"校准功能", 16, 0);
+    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Calibration", 16, 0);
     LCD_DrawLine(0, 25, 160, 25);
 
-    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"校准步骤:", 14, 0);
-    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"1. 开路校准", 12, 0);
-    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"2. 短路校准", 12, 0);
-    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"3. 负载校准", 12, 0);
-    Show_Str(10, 100, WHITE, BLACK, (uint8_t*)"4. 功率校准", 12, 0);
+    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"Cal Steps:", 16, 0);
+    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"1. Open Cal", 12, 0);
+    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"2. Short Cal", 12, 0);
+    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"3. Load Cal", 12, 0);
+    Show_Str(10, 100, WHITE, BLACK, (uint8_t*)"4. Power Cal", 12, 0);
 
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"↑:返回", 12, 0);
+    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
 }
 
 /**
@@ -454,15 +474,15 @@ void Interface_DisplayCalibration(void)
  */
 void Interface_DisplayStandard(void)
 {
-    Show_Str(50, 5, WHITE, BLACK, (uint8_t*)"标定设置", 16, 0);
+    Show_Str(50, 5, WHITE, BLACK, (uint8_t*)"Settings", 16, 0);
     LCD_DrawLine(0, 25, 160, 25);
 
-    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"功率标定:", 14, 0);
-    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"正向功率斜率: 1.00", 12, 0);
-    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"反射功率斜率: 1.00", 12, 0);
-    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"零点偏移: 0.00V", 12, 0);
+    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"Power Cal:", 16, 0);
+    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"Forward Slope: 1.00", 12, 0);
+    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"Reflect Slope: 1.00", 12, 0);
+    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"Zero Offset: 0.00V", 12, 0);
 
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"↑:返回", 12, 0);
+    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
 }
 
 /**
@@ -472,22 +492,22 @@ void Interface_DisplayAlarm(void)
 {
     char str_buffer[32];
 
-    Show_Str(50, 5, WHITE, BLACK, (uint8_t*)"超限报警", 16, 0);
+    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Alarm Limit", 16, 0);
     LCD_DrawLine(0, 25, 160, 25);
 
-    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"报警设置:", 14, 0);
+    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"Alarm Setup:", 16, 0);
 
     // 显示报警使能状态
-    sprintf(str_buffer, "报警使能: %s", g_interface_manager.alarm_enabled ? "开启" : "关闭");
+    sprintf(str_buffer, "Alarm Enable: %s", g_interface_manager.alarm_enabled ? "ON" : "OFF");
     Show_Str(10, 55, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
     // 显示VSWR阈值
-    sprintf(str_buffer, "VSWR阈值: %.1f", g_interface_manager.vswr_alarm_threshold);
+    sprintf(str_buffer, "VSWR Limit: %.1f", g_interface_manager.vswr_alarm_threshold);
     Show_Str(10, 70, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    Show_Str(10, 85, YELLOW, BLACK, (uint8_t*)"超限时蜂鸣器报警", 12, 0);
+    Show_Str(10, 85, YELLOW, BLACK, (uint8_t*)"Buzzer when exceed", 12, 0);
 
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"↑:返回", 12, 0);
+    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
 }
 
 /**
@@ -497,22 +517,30 @@ void Interface_DisplayBrightness(void)
 {
     char str_buffer[32];
 
-    Show_Str(50, 5, WHITE, BLACK, (uint8_t*)"显示亮度", 16, 0);
+    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Brightness", 16, 0);
     LCD_DrawLine(0, 25, 160, 25);
 
-    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"背光亮度:", 14, 0);
+    Show_Str(10, 32, CYAN, BLACK, (uint8_t*)"Backlight:", 16, 0);
 
     // 显示当前亮度
-    sprintf(str_buffer, "当前亮度: %d0%%", g_interface_manager.brightness_level);
+    sprintf(str_buffer, "Current: %02d0%%", g_interface_manager.brightness_level);
     Show_Str(10, 55, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
     // 绘制亮度条
-    LCD_DrawRectangle(10, 75, 140, 85);
-    uint16_t bar_width = g_interface_manager.brightness_level * 130 / 10;
-    LCD_Fill(11, 76, 10 + bar_width, 84, GREEN);
+    LCD_DrawRectangle(10, 75, 139, 85);
 
-    Show_Str(10, 95, YELLOW, BLACK, (uint8_t*)"↓:调节亮度", 12, 0);
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"↑:返回", 12, 0);
+    // 先清除进度条内部区域
+    //LCD_Fill(11, 76, 139, 84, BLACK);
+
+    // 计算并绘制当前亮度条
+    uint16_t bar_width = g_interface_manager.brightness_level * 128 / 10;  // 128像素宽度 (139-11)
+    if (bar_width > 0) {
+        LCD_Fill(11, 76, 11 + bar_width - 1, 84, GREEN);  // 修正结束坐标
+    }
+
+    Show_Str(10, 95, YELLOW, BLACK, (uint8_t*)"DN:Add OK:Confirm", 12, 0);
+    Show_Str(5, 115, YELLOW, BLACK, (uint8_t*)"UP:Back", 12, 0);
+    
 }
 
 /**
@@ -520,14 +548,139 @@ void Interface_DisplayBrightness(void)
  */
 void Interface_DisplayAbout(void)
 {
-    Show_Str(50, 5, WHITE, BLACK, (uint8_t*)"关于设备", 16, 0);
+    Show_Str(60, 5, WHITE, BLACK, (uint8_t*)"About", 16, 0);
     LCD_DrawLine(0, 25, 160, 25);
 
-    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"射频功率计 V1.0", 14, 0);
-    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"频率范围: 1Hz-100MHz", 12, 0);
-    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"功率范围: 0.1W-1kW", 12, 0);
-    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"VSWR测量: 1.0-10.0", 12, 0);
-    Show_Str(10, 100, WHITE, BLACK, (uint8_t*)"制造商: 你的公司", 12, 0);
+    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"RF Power Meter V1.0", 16, 0);
+    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"Freq: 1Hz-100MHz", 12, 0);
+    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"Power: 0.1W-1kW", 12, 0);
+    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"VSWR: 1.0-10.0", 12, 0);
+    Show_Str(10, 100, WHITE, BLACK, (uint8_t*)"Manufacturer: YourCorp", 12, 0);
 
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"↑:返回", 12, 0);
+    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
+}
+
+/**
+ * @brief 系统启动序列界面
+ */
+void System_BootSequence(void)
+{
+    //uint8_t progress = 0;
+    uint8_t i = 0;
+    char progress_str[8] = "";
+
+    // 显示启动标题
+    LCD_Clear(BLACK);
+    Show_Str(20, 10, GREEN, BLACK, (uint8_t*)"RF Power Meter", 16, 0);
+    Show_Str(30, 30, WHITE, BLACK, (uint8_t*)"System Boot", 16, 0);
+
+    Show_Str(20, 65, CYAN, BLACK, (uint8_t*)"Initializing...", 12, 0);
+
+    // 初始进度显示 (0-10%)
+    for (i = 0; i <= 10; i++) {
+        sprintf(progress_str, "%d%%", i);
+        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);  // 移动到原进度条位置
+        HAL_Delay(50);
+    }
+
+    // 步骤1：频率计初始化
+    Show_Str(20, 80, YELLOW, BLACK, (uint8_t*)"FreqCounter Init", 12, 0);
+
+    // 进度显示 (10-30%)
+    for (i = 10; i <= 30; i++) {
+        sprintf(progress_str, "%d%%", i);
+        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
+        HAL_Delay(30);
+    }
+
+    if (FreqCounter_Init() != 0) {
+        LCD_Clear(BLACK);
+        Show_Str(10, 50, RED, BLACK, (uint8_t*)"FreqCounter Init FAIL!", 16, 0);
+        Show_Str(30, 70, WHITE, BLACK, (uint8_t*)"System Halted", 16, 0);
+        while(1) {
+            HAL_Delay(1000);  // 停止运行
+        }
+    }
+    Show_Str(130, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0);
+
+    // 步骤2：频率计启动
+    Show_Str(20, 95, YELLOW, BLACK, (uint8_t*)"FreqCounter Start", 12, 0);
+
+    // 进度显示 (30-50%)
+    for (i = 30; i <= 50; i++) {
+        sprintf(progress_str, "%d%%", i);
+        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
+        HAL_Delay(30);
+    }
+
+    if (FreqCounter_Start() != 0) {
+        LCD_Clear(BLACK);
+        Show_Str(10, 50, RED, BLACK, (uint8_t*)"FreqCounter Start FAIL!", 16, 0);
+        Show_Str(30, 70, WHITE, BLACK, (uint8_t*)"System Halted", 16, 0);
+        while(1) {
+            HAL_Delay(1000);  // 停止运行
+        }
+    }
+    Show_Str(130, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0);
+
+    // 步骤3：界面管理器初始化
+    Show_Str(20, 110, YELLOW, BLACK, (uint8_t*)"Interface Init", 12, 0);
+
+    // 进度显示 (50-70%)
+    for (i = 50; i <= 70; i++) {
+        sprintf(progress_str, "%d%%", i);
+        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
+        HAL_Delay(30);
+    }
+
+    if (InterfaceManager_Init() != 0) {
+        LCD_Clear(BLACK);
+        Show_Str(10, 50, RED, BLACK, (uint8_t*)"Interface Init FAIL!", 16, 0);
+        Show_Str(30, 70, WHITE, BLACK, (uint8_t*)"System Halted", 16, 0);
+        while(1) {
+            HAL_Delay(1000);  // 停止运行
+        }
+    }
+    Show_Str(130, 110, GREEN, BLACK, (uint8_t*)"OK", 12, 0);
+    HAL_Delay(300);
+
+    // 步骤4：PWM启动 (需要清屏重绘，因为屏幕空间不够)
+    LCD_Clear(BLACK);
+    Show_Str(20, 10, GREEN, BLACK, (uint8_t*)"RF Power Meter", 16, 0);
+    Show_Str(30, 30, WHITE, BLACK, (uint8_t*)"System Boot", 16, 0);
+
+    // 恢复之前的进度 (70%)
+    sprintf(progress_str, "%d%%", 70);
+    Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
+
+    Show_Str(20, 80, YELLOW, BLACK, (uint8_t*)"PWM Backlight", 12, 0);
+
+    // 进度显示 (70-85%)
+    for (i = 70; i <= 85; i++) {
+        sprintf(progress_str, "%d%%", i);
+        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
+        HAL_Delay(30);
+    }
+
+    HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+    Show_Str(130, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0);
+
+    // 步骤5：系统就绪
+    Show_Str(20, 95, YELLOW, BLACK, (uint8_t*)"System Ready", 12, 0);
+
+    // 进度显示 (85-100%)
+    for (i = 85; i <= 100; i++) {
+        sprintf(progress_str, "%d%%", i);
+        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
+        HAL_Delay(25);
+    }
+
+    Show_Str(130, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0);
+
+    // 显示完成信息
+    Show_Str(35, 110, WHITE, BLACK, (uint8_t*)"Boot Complete!", 16, 0);
+    HAL_Delay(1000);
+
+    // 清屏准备进入主界面
+    LCD_Clear(BLACK);
 }

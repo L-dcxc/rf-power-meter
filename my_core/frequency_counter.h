@@ -1,8 +1,8 @@
 /**
  * @file frequency_counter.h
  * @brief 频率计功能模块头文件
- * @author 你的名字
- * @date 2025-01-10
+ * @author 蝙蝠鸭
+ * @date 2025-08-10
  * 
  * 功能说明：
  * 1. 使用TIM2外部时钟模式计数PA0输入的脉冲
