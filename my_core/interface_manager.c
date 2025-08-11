@@ -438,11 +438,11 @@ void Interface_DisplayMenu(void)
         uint16_t bg_color = (i == g_interface_manager.menu_cursor) ? BLUE : BLACK;
 
         sprintf(str_buffer, "> %s", menu_items[i]);
-        Show_Str(10, 35 + i * 18, color, bg_color, (uint8_t*)str_buffer, 16, 0); //菜单项(当前选中为黄色背景蓝色)
+        Show_Str(10, 28 + i * 18, color, bg_color, (uint8_t*)str_buffer, 16, 0); //菜单项(当前选中为黄色背景蓝色)
     }
 
     // 显示操作提示
-    //Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back DN:Next OK:Enter", 12, 0); //操作提示(已注释)
+    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back DN:Next OK:Enter", 12, 0); //操作提示(已注释)
 }
 
 /**
@@ -640,8 +640,12 @@ void System_BootSequence(void)
     HAL_IWDG_Refresh(&hiwdg);  // 步骤3完成后喂狗
     HAL_Delay(300);
 
-    // 步骤4：PWM启动 (需要清屏重绘，因为屏幕空间不够)
-    LCD_Clear(BLACK);
+    // 步骤4：PWM启动 (只清除下半屏，保留标题和进度显示)
+    const uint16_t y_boot = 47;      // "System Boot"的y坐标
+    const uint16_t font_h = 16;      // 字号高度
+    const uint16_t margin = 3;      // 额外边距，确保不擦到进度文字
+    uint16_t y_clear_start = y_boot + font_h + margin;
+    LCD_Fill(0, y_clear_start, lcddev.width - 1, lcddev.height - 1, BLACK);
     Show_Str(20, 10, GREEN, BLACK, (uint8_t*)"RF Power Meter", 16, 0);
     Show_Str(30, 30, WHITE, BLACK, (uint8_t*)"System Boot", 16, 0);
 

@@ -110,7 +110,7 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  //HAL_TIM_Base_Start_IT(&htim2);          //使能中断
+  //HAL_TIM_Base_Start_IT(&htim2);          //使能中断外部时钟无需内部中断
   HAL_TIM_Base_Start_IT(&htim3);          //使能中断
   //HAL_TIM_Base_Start_IT(&htim4);          //使能中断
   // 初始化LCD
@@ -152,7 +152,7 @@ int main(void)
     HAL_IWDG_Refresh(&hiwdg);
 
     // 短暂延时
-    HAL_Delay(10);
+    //HAL_Delay(10);
 
     /* USER CODE END WHILE */
 
