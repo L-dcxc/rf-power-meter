@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "frequency_counter.h"
+#include "interface_manager.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -309,7 +310,7 @@ void USART1_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 
-// 外部变量声明
+// 外部按键变量声明
 extern uint8_t g_key_pressed_flag;
 extern uint8_t g_current_key_value;
 
@@ -338,19 +339,22 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
     FreqCounter_TIM4_Callback(htim);
   }
 
-  // TIM2捕获中断回调
+  // TIM2溢出中断回调
   if (htim->Instance == TIM2) {
     FreqCounter_TIM2_Callback(htim);
   }
 
-  // TIM3中断回调 (按键检测)
+  // TIM3中断回调 (按键扫描和蜂鸣器处理)
   if (htim->Instance == TIM3) {
     static uint8_t key_count = 0;
     static uint8_t key_debounce_count = 0;
     static uint8_t last_key_state = 0;
 
+    // 蜂鸣器处理（每1ms调用一次）
+    InterfaceManager_BuzzerProcess();
+
     key_count++;
-    if (key_count >= 20) {  // 20ms到了
+    if (key_count >= 20) {  // 20ms扫描
       key_count = 0;
 
       // 读取按键状态
@@ -363,15 +367,15 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
         key_state = 2;  // DOWN键
       }
 
-      // 消抖处理
+      // 按键防抖处理
       if (key_state == last_key_state) {
         if (key_state != 0 && key_debounce_count == 0) {
-          // 按键按下且消抖完成
+          // 按键按下且未处理过，设置标志
           g_key_pressed_flag = 1;
           g_current_key_value = key_state;
-          key_debounce_count = 1;  // 开始消抖计数
+          key_debounce_count = 1;  // 开始防抖计数
         } else if (key_state == 0) {
-          key_debounce_count = 0;  // 按键释放，清除消抖
+          key_debounce_count = 0;  // 按键释放，清除防抖
         }
       } else {
         last_key_state = key_state;

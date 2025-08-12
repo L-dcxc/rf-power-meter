@@ -93,6 +93,12 @@ typedef struct {
     const char* title;          // 菜单标题
 } MenuItem_t;
 
+/* 蜂鸣器状态结构体 */
+typedef struct {
+    uint8_t is_active;          // 蜂鸣器是否激活
+    uint16_t duration_count;    // 剩余持续时间(ms)
+} BuzzerState_t;
+
 /* 界面管理器状态结构体 */
 typedef struct {
     InterfaceIndex_t current_interface;     // 当前界面
@@ -100,6 +106,7 @@ typedef struct {
     uint8_t brightness_level;               // 亮度等级(0-10)
     uint8_t alarm_enabled;                  // 报警使能
     float vswr_alarm_threshold;             // VSWR报警阈值
+    uint8_t alarm_selected_item;            // 报警设置选中项 (0=开关, 1=阈值)
     uint32_t last_update_time;              // 上次更新时间
     uint8_t need_refresh;                   // 需要刷新标志
 } InterfaceManager_t;
@@ -108,6 +115,7 @@ typedef struct {
 extern InterfaceManager_t g_interface_manager;
 extern PowerResult_t g_power_result;
 extern RFParams_t g_rf_params;
+extern BuzzerState_t g_buzzer_state;
 
 /* 函数声明 */
 
@@ -185,6 +193,13 @@ void InterfaceManager_SetBrightness(uint8_t level);
  * @retval 无
  */
 void InterfaceManager_Beep(uint16_t duration_ms);
+
+/**
+ * @brief 蜂鸣器定时处理函数（在TIM3中断中调用）
+ * @param 无
+ * @retval 无
+ */
+void InterfaceManager_BuzzerProcess(void);
 
 /* 界面显示函数声明 */
 void Interface_DisplayMain(void);           // 主界面显示

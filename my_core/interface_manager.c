@@ -22,6 +22,7 @@ InterfaceManager_t g_interface_manager = {
     .brightness_level = 8,
     .alarm_enabled = 1,
     .vswr_alarm_threshold = 3.0f,
+    .alarm_selected_item = 0,
     .last_update_time = 0,
     .need_refresh = 1
 };
@@ -38,6 +39,12 @@ RFParams_t g_rf_params = {
     .transmission_eff = 100.0f,
     .vswr_color = VSWR_COLOR_GREEN,
     .is_valid = 0
+};
+
+/* 蜂鸣器状态全局变量 */
+BuzzerState_t g_buzzer_state = {
+    .is_active = 0,
+    .duration_count = 0
 };
 
 /* 菜单表定义 */
@@ -69,8 +76,22 @@ int8_t InterfaceManager_Init(void)
     } else {
         g_interface_manager.brightness_level = 8;  // 默认80%亮度
     }
-    g_interface_manager.alarm_enabled = 1;     // 默认使能报警
-    g_interface_manager.vswr_alarm_threshold = 3.0f;  // 默认VSWR报警阈值
+
+    // 从EEPROM读取报警设置，失败则使用默认值
+    uint8_t saved_alarm_enabled;
+    float saved_vswr_threshold;
+    if (BL24C16_Read(0x0001, &saved_alarm_enabled, 1) == EEPROM_OK && saved_alarm_enabled <= 1) {
+        g_interface_manager.alarm_enabled = saved_alarm_enabled;
+    } else {
+        g_interface_manager.alarm_enabled = 1;     // 默认使能报警
+    }
+    if (BL24C16_Read(0x0002, (uint8_t*)&saved_vswr_threshold, sizeof(float)) == EEPROM_OK &&
+        saved_vswr_threshold >= 1.5f && saved_vswr_threshold <= 5.0f) {
+        g_interface_manager.vswr_alarm_threshold = saved_vswr_threshold;
+    } else {
+        g_interface_manager.vswr_alarm_threshold = 3.0f;  // 默认VSWR报警阈值
+    }
+    g_interface_manager.alarm_selected_item = 0;  // 默认选中报警开关
     g_interface_manager.last_update_time = 0;
     g_interface_manager.need_refresh = 1;
     
@@ -141,7 +162,7 @@ void InterfaceManager_Process(void)
     KeyValue_t key = InterfaceManager_GetKey();
     if (key != KEY_NONE) {
         InterfaceManager_HandleKey(key, KEY_STATE_PRESSED);
-        InterfaceManager_Beep(30);  // 按键反馈音
+        InterfaceManager_Beep(50);  // 按键反馈音
     }
 }
 
@@ -196,6 +217,48 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             }
             break;
 
+        case INTERFACE_ALARM:
+            // 超限报警界面按键处理
+            if (key == KEY_UP) {
+                // 返回菜单
+                InterfaceManager_SwitchTo(INTERFACE_MENU);
+            } else if (key == KEY_DOWN) {
+                // 切换选中项（报警开关 ? VSWR阈值）
+                g_interface_manager.alarm_selected_item =
+                    (g_interface_manager.alarm_selected_item + 1) % 2;
+                g_interface_manager.need_refresh = 1;
+            } else if (key == KEY_OK) {
+                // 调节当前选中的项目
+                if (g_interface_manager.alarm_selected_item == 0) {
+                    // 切换报警开关
+                    g_interface_manager.alarm_enabled = !g_interface_manager.alarm_enabled;
+                } else {
+                    // 调节VSWR阈值（循环：1.5 → 2.0 → 2.5 → 3.0 → 3.5 → 4.0 → 5.0 → 1.5）
+                    if (g_interface_manager.vswr_alarm_threshold >= 5.0f) {
+                        g_interface_manager.vswr_alarm_threshold = 1.5f;
+                    } else if (g_interface_manager.vswr_alarm_threshold >= 4.0f) {
+                        g_interface_manager.vswr_alarm_threshold = 5.0f;
+                    } else if (g_interface_manager.vswr_alarm_threshold >= 3.5f) {
+                        g_interface_manager.vswr_alarm_threshold = 4.0f;
+                    } else if (g_interface_manager.vswr_alarm_threshold >= 3.0f) {
+                        g_interface_manager.vswr_alarm_threshold = 3.5f;
+                    } else if (g_interface_manager.vswr_alarm_threshold >= 2.5f) {
+                        g_interface_manager.vswr_alarm_threshold = 3.0f;
+                    } else if (g_interface_manager.vswr_alarm_threshold >= 2.0f) {
+                        g_interface_manager.vswr_alarm_threshold = 2.5f;
+                    } else if (g_interface_manager.vswr_alarm_threshold >= 1.5f) {
+                        g_interface_manager.vswr_alarm_threshold = 2.0f;
+                    } else {
+                        g_interface_manager.vswr_alarm_threshold = 1.5f;
+                    }
+                }
+                // 保存报警设置到EEPROM
+                BL24C16_Write(0x0001, &g_interface_manager.alarm_enabled, 1);
+                BL24C16_Write(0x0002, (uint8_t*)&g_interface_manager.vswr_alarm_threshold, sizeof(float));
+                g_interface_manager.need_refresh = 1;
+            }
+            break;
+
         default:
             // 其他界面按键处理
             if (key == KEY_UP) {
@@ -215,6 +278,11 @@ void InterfaceManager_SwitchTo(InterfaceIndex_t interface)
         g_interface_manager.current_interface = interface;
         g_interface_manager.need_refresh = 1;
         LCD_Clear(BLACK);  // 清屏
+
+        // 界面切换时的特殊处理
+        if (interface == INTERFACE_ALARM) {
+            g_interface_manager.alarm_selected_item = 0;  // 重置为选中报警开关
+        }
     }
 }
 
@@ -321,14 +389,32 @@ void InterfaceManager_SetBrightness(uint8_t level)
 }
 
 /**
- * @brief 触发蜂鸣器
+ * @brief 触发蜂鸣器（非阻塞方式）
  */
 void InterfaceManager_Beep(uint16_t duration_ms)
 {
-    // 蜂鸣器控制 (PB4)
+    // 设置蜂鸣器状态
+    g_buzzer_state.is_active = 1;
+    g_buzzer_state.duration_count = duration_ms;
+
+    // 立即开启蜂鸣器 (PB4)
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
-    HAL_Delay(duration_ms);
-    HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+}
+
+/**
+ * @brief 蜂鸣器定时处理函数（在TIM3中断中调用）
+ */
+void InterfaceManager_BuzzerProcess(void)
+{
+    if (g_buzzer_state.is_active) {
+        if (g_buzzer_state.duration_count > 0) {
+            g_buzzer_state.duration_count--;
+        } else {
+            // 时间到，关闭蜂鸣器
+            g_buzzer_state.is_active = 0;
+            HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
+        }
+    }
 }
 
 /**
@@ -490,16 +576,27 @@ void Interface_DisplayAlarm(void)
 
     Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"Alarm Setup:", 16, 0); //报警设置标签
 
-    // 显示报警使能状态
-    sprintf(str_buffer, "Alarm Enable: %s", g_interface_manager.alarm_enabled ? "ON" : "OFF");
-    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //报警使能状态
+    // 显示报警使能状态（带选中指示）
+    if (g_interface_manager.alarm_selected_item == 0) {
+        Show_Str(5, 55, GREEN, BLACK, (uint8_t*)">", 12, 0); //选中指示符
+    } else {
+        Show_Str(5, 55, BLACK, BLACK, (uint8_t*)" ", 12, 0); //清除指示符
+    }
+    sprintf(str_buffer, "Alarm Enable: %s", g_interface_manager.alarm_enabled ? "ON " : "OFF");
+    Show_Str(15, 55, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //报警使能状态
 
-    // 显示VSWR阈值
+    // 显示VSWR阈值（带选中指示）
+    if (g_interface_manager.alarm_selected_item == 1) {
+        Show_Str(5, 70, GREEN, BLACK, (uint8_t*)">", 12, 0); //选中指示符
+    } else {
+        Show_Str(5, 70, BLACK, BLACK, (uint8_t*)" ", 12, 0); //清除指示符
+    }
     sprintf(str_buffer, "VSWR Limit: %.1f", g_interface_manager.vswr_alarm_threshold);
-    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //驻波比报警阈值
+    Show_Str(15, 70, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //驻波比报警阈值
 
     Show_Str(10, 85, YELLOW, BLACK, (uint8_t*)"Buzzer when exceed", 12, 0); //超限蜂鸣器提示
 
+    Show_Str(5, 100, GRAY, BLACK, (uint8_t*)"DOWN:Switch OK:Edit", 12, 0); //操作提示
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0); //返回提示
 }
 
