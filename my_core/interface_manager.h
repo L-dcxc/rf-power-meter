@@ -32,6 +32,13 @@ typedef enum {
     INTERFACE_MAIN = 0,         // 主界面
     INTERFACE_MENU,             // 设置菜单
     INTERFACE_CALIBRATION,      // 校准功能
+    INTERFACE_CAL_CONFIRM,      // 校准确认页
+    INTERFACE_CAL_ZERO,         // 零点校准
+    INTERFACE_CAL_POWER,        // 功率斜率校准
+    INTERFACE_CAL_BAND,         // 频段增益修正
+    INTERFACE_CAL_REFLECT,      // 反射通道定标
+    INTERFACE_CAL_FREQ,         // 频率计微调
+    INTERFACE_CAL_COMPLETE,     // 校准完成
     INTERFACE_STANDARD,         // 标定设置
     INTERFACE_ALARM,            // 超限报警
     INTERFACE_BRIGHTNESS,       // 显示亮度
@@ -99,6 +106,42 @@ typedef struct {
     uint16_t duration_count;    // 剩余持续时间(ms)
 } BuzzerState_t;
 
+/* 校准步骤枚举 */
+typedef enum {
+    CAL_STEP_CONFIRM = 0,       // 确认进入校准
+    CAL_STEP_ZERO,              // 零点校准
+    CAL_STEP_POWER,             // 功率斜率校准
+    CAL_STEP_BAND,              // 频段增益修正
+    CAL_STEP_REFLECT,           // 反射通道定标
+    CAL_STEP_FREQ,              // 频率计微调
+    CAL_STEP_COMPLETE           // 校准完成
+} CalibrationStep_t;
+
+/* 校准数据结构体 */
+typedef struct {
+    float forward_offset;       // 正向功率零点偏移(V)
+    float reflected_offset;     // 反射功率零点偏移(V)
+    float k_forward;            // 正向功率比例系数(W/V)
+    float k_reflected;          // 反射功率比例系数(W/V)
+    float band_gain_fwd[11];    // 各频段正向增益修正系数
+    float band_gain_ref[11];    // 各频段反射增益修正系数
+    float freq_trim;            // 频率计微调系数
+    uint8_t is_calibrated;      // 校准完成标志
+} CalibrationData_t;
+
+/* 校准状态结构体 */
+typedef struct {
+    CalibrationStep_t current_step;     // 当前校准步骤
+    uint8_t current_band;               // 当前频段索引(0-10)
+    uint8_t sample_count;               // 采样计数
+    float sample_sum_fwd;               // 正向功率采样累计
+    float sample_sum_ref;               // 反射功率采样累计
+    uint8_t is_stable;                  // 读数稳定标志
+    uint16_t stable_count;              // 稳定计数器
+    float ref_power;                    // 参考功率值
+    uint8_t ref_power_index;            // 参考功率档位索引
+} CalibrationState_t;
+
 /* 界面管理器状态结构体 */
 typedef struct {
     InterfaceIndex_t current_interface;     // 当前界面
@@ -116,6 +159,8 @@ extern InterfaceManager_t g_interface_manager;
 extern PowerResult_t g_power_result;
 extern RFParams_t g_rf_params;
 extern BuzzerState_t g_buzzer_state;
+extern CalibrationData_t g_calibration_data;
+extern CalibrationState_t g_calibration_state;
 
 /* 函数声明 */
 
@@ -205,10 +250,26 @@ void InterfaceManager_BuzzerProcess(void);
 void Interface_DisplayMain(void);           // 主界面显示
 void Interface_DisplayMenu(void);           // 菜单界面显示
 void Interface_DisplayCalibration(void);    // 校准界面显示
+void Interface_DisplayCalConfirm(void);     // 校准确认页显示
+void Interface_DisplayCalZero(void);        // 零点校准显示
+void Interface_DisplayCalPower(void);       // 功率斜率校准显示
+void Interface_DisplayCalBand(void);        // 频段增益修正显示
+void Interface_DisplayCalReflect(void);     // 反射通道定标显示
+void Interface_DisplayCalFreq(void);        // 频率计微调显示
+void Interface_DisplayCalComplete(void);    // 校准完成显示
 void Interface_DisplayStandard(void);       // 标定界面显示
 void Interface_DisplayAlarm(void);          // 报警设置界面显示
 void Interface_DisplayBrightness(void);     // 亮度设置界面显示
 void Interface_DisplayAbout(void);          // 关于界面显示
+
+/* 校准功能函数声明 */
+void Calibration_Init(void);                // 校准系统初始化
+void Calibration_LoadFromEEPROM(void);      // 从EEPROM加载校准数据
+void Calibration_SaveToEEPROM(void);        // 保存校准数据到EEPROM
+void Calibration_StartStep(CalibrationStep_t step);  // 开始校准步骤
+void Calibration_ProcessSample(void);       // 处理校准采样
+uint8_t Calibration_GetBandIndex(float frequency);   // 获取频段索引
+float Calibration_ApplyCorrection(float raw_power, uint8_t is_forward, float frequency);  // 应用校准修正
 
 // 系统启动界面
 void System_BootSequence(void);             // 系统启动序列界面
