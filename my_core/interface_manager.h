@@ -118,11 +118,19 @@ typedef enum {
 } CalibrationStep_t;
 
 /* 校准数据结构体 */
+/* 功率校准点结构体 */
+typedef struct {
+    float power;                // 功率值(W)
+    float voltage;              // 对应电压(V)
+} PowerCalPoint_t;
+
 typedef struct {
     float forward_offset;       // 正向功率零点偏移(V)
     float reflected_offset;     // 反射功率零点偏移(V)
-    float k_forward;            // 正向功率比例系数(W/V)
-    float k_reflected;          // 反射功率比例系数(W/V)
+    PowerCalPoint_t fwd_table[5];    // 正向功率校准表(100W-500W)
+    PowerCalPoint_t ref_table[5];    // 反射功率校准表
+    uint8_t fwd_points;         // 正向校准点数(最多5个)
+    uint8_t ref_points;         // 反射校准点数(最多5个)
     float band_gain_fwd[11];    // 各频段正向增益修正系数
     float band_gain_ref[11];    // 各频段反射增益修正系数
     float freq_trim;            // 频率计微调系数
@@ -133,13 +141,15 @@ typedef struct {
 typedef struct {
     CalibrationStep_t current_step;     // 当前校准步骤
     uint8_t current_band;               // 当前频段索引(0-10)
+    uint8_t current_power_point;        // 当前功率校准点(0-4)
+    uint8_t current_channel;            // 当前校准通道(0=正向,1=反射)
     uint8_t sample_count;               // 采样计数
     float sample_sum_fwd;               // 正向功率采样累计
     float sample_sum_ref;               // 反射功率采样累计
     uint8_t is_stable;                  // 读数稳定标志
     uint16_t stable_count;              // 稳定计数器
-    float ref_power;                    // 参考功率值
-    uint8_t ref_power_index;            // 参考功率档位索引
+    float target_power;                 // 目标功率值
+    uint8_t power_cal_mode;             // 功率校准模式(0=正向,1=反射)
 } CalibrationState_t;
 
 /* 界面管理器状态结构体 */
@@ -269,7 +279,8 @@ void Calibration_SaveToEEPROM(void);        // 保存校准数据到EEPROM
 void Calibration_StartStep(CalibrationStep_t step);  // 开始校准步骤
 void Calibration_ProcessSample(void);       // 处理校准采样
 uint8_t Calibration_GetBandIndex(float frequency);   // 获取频段索引
-float Calibration_ApplyCorrection(float raw_power, uint8_t is_forward, float frequency);  // 应用校准修正
+float Calibration_CalculatePowerFromTable(float voltage, PowerCalPoint_t* table, uint8_t points);  // 查表计算功率
+float Calibration_ApplyCorrection(float raw_voltage, uint8_t is_forward, float frequency);  // 应用校准修正
 
 // 系统启动界面
 void System_BootSequence(void);             // 系统启动序列界面
