@@ -3,7 +3,7 @@
 <title>Static Call Graph - [project_1\project_1.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image project_1\project_1.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Fri Aug 15 21:31:01 2025
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060960: Last Updated: Fri Aug 15 22:02:47 2025
 <BR><P>
 <H3>Maximum Stack Usage =        368 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -300,7 +300,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[103]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ProcessRFParameters
 </UL>
 
-<P><STRONG><a name="[69]"></a>__aeabi_fmul</STRONG> (Thumb, 100 bytes, Stack size 8 bytes, fmul.o(.text))
+<P><STRONG><a name="[68]"></a>__aeabi_fmul</STRONG> (Thumb, 100 bytes, Stack size 8 bytes, fmul.o(.text))
 <BR><BR>[Stack]<UL><LI>Max Depth = 8<LI>Call Chain = __aeabi_fmul
 </UL>
 <BR>[Called By]<UL><LI><a href="#[103]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ProcessRFParameters
@@ -321,6 +321,7 @@ Global Symbols
 <LI><a href="#[102]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ProcessPowerMeasurement
 <LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_ReadADCVoltage
 <LI><a href="#[75]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;FreqCounter_ConvertUnit
+<LI><a href="#[d7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Interface_DisplayCalPower
 <LI><a href="#[6c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_ProcessSample
 <LI><a href="#[66]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_CalculatePowerFromTable
 </UL>
@@ -364,7 +365,7 @@ Global Symbols
 <LI><a href="#[66]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_CalculatePowerFromTable
 </UL>
 
-<P><STRONG><a name="[68]"></a>__aeabi_cfrcmple</STRONG> (Thumb, 20 bytes, Stack size 0 bytes, cfrcmple.o(.text))
+<P><STRONG><a name="[69]"></a>__aeabi_cfrcmple</STRONG> (Thumb, 20 bytes, Stack size 0 bytes, cfrcmple.o(.text))
 <BR><BR>[Called By]<UL><LI><a href="#[e3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_UpdateRFParams
 <LI><a href="#[66]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_CalculatePowerFromTable
 </UL>
@@ -582,14 +583,14 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> startup_stm32f103xb.o(RESET)
 </UL>
-<P><STRONG><a name="[66]"></a>Calibration_CalculatePowerFromTable</STRONG> (Thumb, 282 bytes, Stack size 32 bytes, interface_manager.o(i.Calibration_CalculatePowerFromTable))
+<P><STRONG><a name="[66]"></a>Calibration_CalculatePowerFromTable</STRONG> (Thumb, 302 bytes, Stack size 32 bytes, interface_manager.o(i.Calibration_CalculatePowerFromTable))
 <BR><BR>[Stack]<UL><LI>Max Depth = 52<LI>Call Chain = Calibration_CalculatePowerFromTable &rArr; __aeabi_fsub &rArr; __aeabi_fadd &rArr; _float_epilogue
 </UL>
 <BR>[Calls]<UL><LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fsub
-<LI><a href="#[69]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
+<LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
 <LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fdiv
 <LI><a href="#[40]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fadd
-<LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_cfrcmple
+<LI><a href="#[69]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_cfrcmple
 <LI><a href="#[67]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_cfcmple
 </UL>
 <BR>[Called By]<UL><LI><a href="#[6c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_ProcessSample
@@ -603,21 +604,21 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[d0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_Init
 </UL>
 
-<P><STRONG><a name="[6b]"></a>Calibration_LoadFromEEPROM</STRONG> (Thumb, 290 bytes, Stack size 32 bytes, interface_manager.o(i.Calibration_LoadFromEEPROM))
+<P><STRONG><a name="[6b]"></a>Calibration_LoadFromEEPROM</STRONG> (Thumb, 310 bytes, Stack size 32 bytes, interface_manager.o(i.Calibration_LoadFromEEPROM))
 <BR><BR>[Stack]<UL><LI>Max Depth = 96<LI>Call Chain = Calibration_LoadFromEEPROM &rArr; BL24C16_Read &rArr; SoftI2C_WriteByte &rArr; SoftI2C_Delay
 </UL>
-<BR>[Calls]<UL><LI><a href="#[69]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
+<BR>[Calls]<UL><LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
 <LI><a href="#[46]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_i2f
 <LI><a href="#[5f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;BL24C16_Read
 </UL>
 <BR>[Called By]<UL><LI><a href="#[6a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_Init
 </UL>
 
-<P><STRONG><a name="[6c]"></a>Calibration_ProcessSample</STRONG> (Thumb, 462 bytes, Stack size 48 bytes, interface_manager.o(i.Calibration_ProcessSample))
+<P><STRONG><a name="[6c]"></a>Calibration_ProcessSample</STRONG> (Thumb, 464 bytes, Stack size 48 bytes, interface_manager.o(i.Calibration_ProcessSample))
 <BR><BR>[Stack]<UL><LI>Max Depth = 112<LI>Call Chain = Calibration_ProcessSample &rArr; Calibration_ReadADCVoltage &rArr; HAL_ADC_Start &rArr; ADC_Enable
 </UL>
 <BR>[Calls]<UL><LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fsub
-<LI><a href="#[69]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
+<LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
 <LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fdiv
 <LI><a href="#[40]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fadd
 <LI><a href="#[6d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_ReadADCVoltage
@@ -629,7 +630,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[d1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_Process
 </UL>
 
-<P><STRONG><a name="[ce]"></a>Calibration_StartStep</STRONG> (Thumb, 52 bytes, Stack size 0 bytes, interface_manager.o(i.Calibration_StartStep))
+<P><STRONG><a name="[ce]"></a>Calibration_StartStep</STRONG> (Thumb, 50 bytes, Stack size 0 bytes, interface_manager.o(i.Calibration_StartStep))
 <BR><BR>[Called By]<UL><LI><a href="#[cb]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_HandleKey
 </UL>
 
@@ -1292,7 +1293,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[d1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_Process
 </UL>
 
-<P><STRONG><a name="[cb]"></a>InterfaceManager_HandleKey</STRONG> (Thumb, 462 bytes, Stack size 24 bytes, interface_manager.o(i.InterfaceManager_HandleKey))
+<P><STRONG><a name="[cb]"></a>InterfaceManager_HandleKey</STRONG> (Thumb, 458 bytes, Stack size 24 bytes, interface_manager.o(i.InterfaceManager_HandleKey))
 <BR><BR>[Stack]<UL><LI>Max Depth = 200<LI>Call Chain = InterfaceManager_HandleKey &rArr; InterfaceManager_SwitchTo &rArr; LCD_Clear &rArr; LCD_SetWindows &rArr; LCD_WriteRAM_Prepare &rArr; LCD_WR_REG &rArr; LCD_SPI_WriteByte &rArr; HAL_SPI_Transmit &rArr; SPI_EndRxTxTransaction &rArr; SPI_WaitFlagStateUntilTimeout
 </UL>
 <BR>[Calls]<UL><LI><a href="#[cc]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LCD_Fill
@@ -1367,7 +1368,7 @@ Global Symbols
 <P><STRONG><a name="[e3]"></a>InterfaceManager_UpdateRFParams</STRONG> (Thumb, 70 bytes, Stack size 16 bytes, interface_manager.o(i.InterfaceManager_UpdateRFParams))
 <BR><BR>[Stack]<UL><LI>Max Depth = 16<LI>Call Chain = InterfaceManager_UpdateRFParams
 </UL>
-<BR>[Calls]<UL><LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_cfrcmple
+<BR>[Calls]<UL><LI><a href="#[69]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_cfrcmple
 <LI><a href="#[6f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_Beep
 </UL>
 <BR>[Called By]<UL><LI><a href="#[103]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ProcessRFParameters
@@ -1446,10 +1447,11 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[d1]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_Process
 </UL>
 
-<P><STRONG><a name="[d7]"></a>Interface_DisplayCalPower</STRONG> (Thumb, 262 bytes, Stack size 72 bytes, interface_manager.o(i.Interface_DisplayCalPower))
+<P><STRONG><a name="[d7]"></a>Interface_DisplayCalPower</STRONG> (Thumb, 284 bytes, Stack size 72 bytes, interface_manager.o(i.Interface_DisplayCalPower))
 <BR><BR>[Stack]<UL><LI>Max Depth = 328<LI>Call Chain = Interface_DisplayCalPower &rArr; Show_Str &rArr; LCD_ShowChar &rArr; LCD_SetWindows &rArr; LCD_WriteRAM_Prepare &rArr; LCD_WR_REG &rArr; LCD_SPI_WriteByte &rArr; HAL_SPI_Transmit &rArr; SPI_EndRxTxTransaction &rArr; SPI_WaitFlagStateUntilTimeout
 </UL>
-<BR>[Calls]<UL><LI><a href="#[e4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Show_Str
+<BR>[Calls]<UL><LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fdiv
+<LI><a href="#[e4]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Show_Str
 <LI><a href="#[e5]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;LCD_DrawLine
 <LI><a href="#[e6]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2sprintf
 <LI><a href="#[e7]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_f2d
@@ -1821,7 +1823,7 @@ Global Symbols
 <BR><BR>[Stack]<UL><LI>Max Depth = 64<LI>Call Chain = ProcessPowerMeasurement &rArr; HAL_ADC_Start &rArr; ADC_Enable
 </UL>
 <BR>[Calls]<UL><LI><a href="#[47]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_ui2f
-<LI><a href="#[69]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
+<LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
 <LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fdiv
 <LI><a href="#[e2]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_UpdatePower
 <LI><a href="#[58]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
@@ -1838,7 +1840,7 @@ Global Symbols
 </UL>
 <BR>[Calls]<UL><LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fsub
 <LI><a href="#[44]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_frsub
-<LI><a href="#[69]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
+<LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
 <LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fdiv
 <LI><a href="#[40]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fadd
 <LI><a href="#[e3]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_UpdateRFParams
@@ -2293,7 +2295,7 @@ Local Symbols
 <BR><BR>[Stack]<UL><LI>Max Depth = 64<LI>Call Chain = Calibration_ReadADCVoltage &rArr; HAL_ADC_Start &rArr; ADC_Enable
 </UL>
 <BR>[Calls]<UL><LI><a href="#[47]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_ui2f
-<LI><a href="#[69]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
+<LI><a href="#[68]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fmul
 <LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fdiv
 <LI><a href="#[73]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_ADC_Stop
 <LI><a href="#[70]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_ADC_Start

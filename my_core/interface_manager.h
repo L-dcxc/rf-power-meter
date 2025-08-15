@@ -127,10 +127,10 @@ typedef struct {
 typedef struct {
     float forward_offset;       // 正向功率零点偏移(V)
     float reflected_offset;     // 反射功率零点偏移(V)
-    PowerCalPoint_t fwd_table[5];    // 正向功率校准表(100W-500W)
-    PowerCalPoint_t ref_table[5];    // 反射功率校准表
-    uint8_t fwd_points;         // 正向校准点数(最多5个)
-    uint8_t ref_points;         // 反射校准点数(最多5个)
+    PowerCalPoint_t fwd_table[20];   // 正向功率校准表(100W-2000W)
+    PowerCalPoint_t ref_table[20];   // 反射功率校准表(100W-2000W)
+    uint8_t fwd_points;         // 正向校准点数(最多20个)
+    uint8_t ref_points;         // 反射校准点数(最多20个)
     float band_gain_fwd[11];    // 各频段正向增益修正系数
     float band_gain_ref[11];    // 各频段反射增益修正系数
     float freq_trim;            // 频率计微调系数
@@ -141,7 +141,7 @@ typedef struct {
 typedef struct {
     CalibrationStep_t current_step;     // 当前校准步骤
     uint8_t current_band;               // 当前频段索引(0-10)
-    uint8_t current_power_point;        // 当前功率校准点(0-4)
+    uint8_t current_power_point;        // 当前功率校准点(0-19)
     uint8_t current_channel;            // 当前校准通道(0=正向,1=反射)
     uint8_t sample_count;               // 采样计数
     float sample_sum_fwd;               // 正向功率采样累计

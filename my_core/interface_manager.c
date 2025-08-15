@@ -55,8 +55,20 @@ BuzzerState_t g_buzzer_state = {
 CalibrationData_t g_calibration_data = {
     .forward_offset = 0.0f,
     .reflected_offset = 0.0f,
-    .fwd_table = {{100.0f, 1.0f}, {200.0f, 2.0f}, {300.0f, 3.0f}, {400.0f, 4.0f}, {500.0f, 5.0f}},
-    .ref_table = {{10.0f, 0.1f}, {20.0f, 0.2f}, {30.0f, 0.3f}, {40.0f, 0.4f}, {50.0f, 0.5f}},
+    .fwd_table = {
+        // 初始化20个校准点的默认值
+        {100.0f, 1.0f}, {200.0f, 2.0f}, {300.0f, 3.0f}, {400.0f, 4.0f}, {500.0f, 5.0f},
+        {600.0f, 6.0f}, {700.0f, 7.0f}, {800.0f, 8.0f}, {900.0f, 9.0f}, {1000.0f, 10.0f},
+        {1100.0f, 11.0f}, {1200.0f, 12.0f}, {1300.0f, 13.0f}, {1400.0f, 14.0f}, {1500.0f, 15.0f},
+        {1600.0f, 16.0f}, {1700.0f, 17.0f}, {1800.0f, 18.0f}, {1900.0f, 19.0f}, {2000.0f, 20.0f}
+    },
+    .ref_table = {
+        // 反射功率校准表初始值
+        {100.0f, 0.1f}, {200.0f, 0.2f}, {300.0f, 0.3f}, {400.0f, 0.4f}, {500.0f, 0.5f},
+        {600.0f, 0.6f}, {700.0f, 0.7f}, {800.0f, 0.8f}, {900.0f, 0.9f}, {1000.0f, 1.0f},
+        {1100.0f, 1.1f}, {1200.0f, 1.2f}, {1300.0f, 1.3f}, {1400.0f, 1.4f}, {1500.0f, 1.5f},
+        {1600.0f, 1.6f}, {1700.0f, 1.7f}, {1800.0f, 1.8f}, {1900.0f, 1.9f}, {2000.0f, 2.0f}
+    },
     .fwd_points = 0,            // 初始无校准点
     .ref_points = 0,            // 初始无校准点
     .band_gain_fwd = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
@@ -89,9 +101,21 @@ static const float band_frequencies[11] = {
     1.8f, 3.5f, 5.3f, 7.0f, 10.1f, 14.0f, 18.1f, 21.0f, 24.9f, 28.0f, 50.0f  // MHz
 };
 
-/* 功率校准点定义 */
-static const float power_cal_points[5] = {100.0f, 200.0f, 300.0f, 400.0f, 500.0f};  // W
-static const float ref_power_cal_points[5] = {10.0f, 20.0f, 30.0f, 40.0f, 50.0f};   // W (反射功率校准点)
+/* 功率校准点定义 (0W-2kW范围，20个校准点) */
+static const float power_cal_points[20] = {
+    100.0f, 200.0f, 300.0f, 400.0f, 500.0f,      // 100W-500W
+    600.0f, 700.0f, 800.0f, 900.0f, 1000.0f,     // 600W-1000W
+    1100.0f, 1200.0f, 1300.0f, 1400.0f, 1500.0f, // 1100W-1500W
+    1600.0f, 1700.0f, 1800.0f, 1900.0f, 2000.0f  // 1600W-2000W
+};
+
+/* 反射功率校准点定义 (同样支持0W-2kW范围) */
+static const float ref_power_cal_points[20] = {
+    100.0f, 200.0f, 300.0f, 400.0f, 500.0f,      // 100W-500W
+    600.0f, 700.0f, 800.0f, 900.0f, 1000.0f,     // 600W-1000W
+    1100.0f, 1200.0f, 1300.0f, 1400.0f, 1500.0f, // 1100W-1500W
+    1600.0f, 1700.0f, 1800.0f, 1900.0f, 2000.0f  // 1600W-2000W
+};
 
 /* 菜单表定义 */
 const MenuItem_t menu_table[MAX_MENU_ITEMS] = {
@@ -387,7 +411,7 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             } else if (key == KEY_DOWN) {
                 // 切换到下一个校准点或通道
                 if (g_calibration_state.current_channel == 0) {  // 正向功率校准
-                    if (g_calibration_state.current_power_point < 4) {
+                    if (g_calibration_state.current_power_point < 19) {  // 0-19共20个点
                         g_calibration_state.current_power_point++;
                         g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
                     } else {
@@ -397,7 +421,7 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
                         g_calibration_state.target_power = ref_power_cal_points[0];
                     }
                 } else {  // 反射功率校准
-                    if (g_calibration_state.current_power_point < 4) {
+                    if (g_calibration_state.current_power_point < 19) {  // 0-19共20个点
                         g_calibration_state.current_power_point++;
                         g_calibration_state.target_power = ref_power_cal_points[g_calibration_state.current_power_point];
                     } else {
@@ -603,6 +627,14 @@ void Calibration_Init(void)
 
 /**
  * @brief 从EEPROM加载校准数据
+ *
+ * EEPROM地址布局 (支持0W-2kW功率范围):
+ * 0x0010-0x0017: 零点偏移数据 (8字节)
+ * 0x0020-0x011F: 正向功率校准表 (20点×8字节=160字节)
+ * 0x0120-0x021F: 反射功率校准表 (20点×8字节=160字节)
+ * 0x0220-0x0221: 校准点数 (2字节)
+ * 0x0300-0x035B: 频段增益修正 (11×8字节=88字节)
+ * 0x0400-0x0407: 频率微调和标志 (8字节)
  */
 void Calibration_LoadFromEEPROM(void)
 {
@@ -614,49 +646,52 @@ void Calibration_LoadFromEEPROM(void)
         g_calibration_data.reflected_offset = 0.0f;
     }
 
-    // 读取正向功率校准表
-    if (BL24C16_Read(0x0020, (uint8_t*)&g_calibration_data.fwd_table, sizeof(g_calibration_data.fwd_table)) != EEPROM_OK) {
-        // 使用默认值
-        for (int i = 0; i < 5; i++) {
+    // 读取正向功率校准表 (20个点，每个点8字节，共160字节)
+    // 分块读取以避免单次读取过多数据
+    for (int i = 0; i < 20; i++) {
+        uint16_t addr = 0x0020 + i * sizeof(PowerCalPoint_t);
+        if (BL24C16_Read(addr, (uint8_t*)&g_calibration_data.fwd_table[i], sizeof(PowerCalPoint_t)) != EEPROM_OK) {
+            // 使用默认值
             g_calibration_data.fwd_table[i].power = power_cal_points[i];
             g_calibration_data.fwd_table[i].voltage = (i + 1) * 1.0f;  // 默认电压
         }
     }
 
-    // 读取反射功率校准表
-    if (BL24C16_Read(0x0060, (uint8_t*)&g_calibration_data.ref_table, sizeof(g_calibration_data.ref_table)) != EEPROM_OK) {
-        // 使用默认值
-        for (int i = 0; i < 5; i++) {
+    // 读取反射功率校准表 (地址从0x0120开始，避免与正向表冲突)
+    for (int i = 0; i < 20; i++) {
+        uint16_t addr = 0x0120 + i * sizeof(PowerCalPoint_t);
+        if (BL24C16_Read(addr, (uint8_t*)&g_calibration_data.ref_table[i], sizeof(PowerCalPoint_t)) != EEPROM_OK) {
+            // 使用默认值
             g_calibration_data.ref_table[i].power = ref_power_cal_points[i];
             g_calibration_data.ref_table[i].voltage = (i + 1) * 0.1f;  // 默认电压
         }
     }
 
-    // 读取校准点数
-    if (BL24C16_Read(0x00A0, &g_calibration_data.fwd_points, 1) != EEPROM_OK) {
+    // 读取校准点数 (调整地址避免与校准表冲突)
+    if (BL24C16_Read(0x0220, &g_calibration_data.fwd_points, 1) != EEPROM_OK) {
         g_calibration_data.fwd_points = 0;
     }
-    if (BL24C16_Read(0x00A1, &g_calibration_data.ref_points, 1) != EEPROM_OK) {
+    if (BL24C16_Read(0x0221, &g_calibration_data.ref_points, 1) != EEPROM_OK) {
         g_calibration_data.ref_points = 0;
     }
 
-    // 读取频段增益修正
+    // 读取频段增益修正 (调整地址避免冲突)
     for (int i = 0; i < 11; i++) {
-        if (BL24C16_Read(0x0100 + i * 4, (uint8_t*)&g_calibration_data.band_gain_fwd[i], sizeof(float)) != EEPROM_OK) {
+        if (BL24C16_Read(0x0300 + i * 4, (uint8_t*)&g_calibration_data.band_gain_fwd[i], sizeof(float)) != EEPROM_OK) {
             g_calibration_data.band_gain_fwd[i] = 1.0f;
         }
-        if (BL24C16_Read(0x0140 + i * 4, (uint8_t*)&g_calibration_data.band_gain_ref[i], sizeof(float)) != EEPROM_OK) {
+        if (BL24C16_Read(0x0330 + i * 4, (uint8_t*)&g_calibration_data.band_gain_ref[i], sizeof(float)) != EEPROM_OK) {
             g_calibration_data.band_gain_ref[i] = 1.0f;
         }
     }
 
-    // 读取频率微调
-    if (BL24C16_Read(0x0200, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float)) != EEPROM_OK) {
+    // 读取频率微调 (调整地址避免冲突)
+    if (BL24C16_Read(0x0400, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float)) != EEPROM_OK) {
         g_calibration_data.freq_trim = 1.0f;
     }
 
     // 读取校准完成标志
-    if (BL24C16_Read(0x0204, &g_calibration_data.is_calibrated, 1) != EEPROM_OK) {
+    if (BL24C16_Read(0x0404, &g_calibration_data.is_calibrated, 1) != EEPROM_OK) {
         g_calibration_data.is_calibrated = 0;
     }
 }
@@ -670,28 +705,36 @@ void Calibration_SaveToEEPROM(void)
     BL24C16_Write(0x0010, (uint8_t*)&g_calibration_data.forward_offset, sizeof(float));
     BL24C16_Write(0x0014, (uint8_t*)&g_calibration_data.reflected_offset, sizeof(float));
 
-    // 保存正向功率校准表
-    BL24C16_Write(0x0020, (uint8_t*)&g_calibration_data.fwd_table, sizeof(g_calibration_data.fwd_table));
-
-    // 保存反射功率校准表
-    BL24C16_Write(0x0060, (uint8_t*)&g_calibration_data.ref_table, sizeof(g_calibration_data.ref_table));
-
-    // 保存校准点数
-    BL24C16_Write(0x00A0, &g_calibration_data.fwd_points, 1);
-    BL24C16_Write(0x00A1, &g_calibration_data.ref_points, 1);
-
-    // 保存频段增益修正
-    for (int i = 0; i < 11; i++) {
-        BL24C16_Write(0x0100 + i * 4, (uint8_t*)&g_calibration_data.band_gain_fwd[i], sizeof(float));
-        BL24C16_Write(0x0140 + i * 4, (uint8_t*)&g_calibration_data.band_gain_ref[i], sizeof(float));
+    // 保存正向功率校准表 (分块保存以确保可靠性)
+    for (int i = 0; i < 20; i++) {
+        uint16_t addr = 0x0020 + i * sizeof(PowerCalPoint_t);
+        BL24C16_Write(addr, (uint8_t*)&g_calibration_data.fwd_table[i], sizeof(PowerCalPoint_t));
+        HAL_Delay(5);  // 写入间隔，确保EEPROM写入完成
     }
 
-    // 保存频率微调
-    BL24C16_Write(0x0200, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float));
+    // 保存反射功率校准表 (地址从0x0120开始)
+    for (int i = 0; i < 20; i++) {
+        uint16_t addr = 0x0120 + i * sizeof(PowerCalPoint_t);
+        BL24C16_Write(addr, (uint8_t*)&g_calibration_data.ref_table[i], sizeof(PowerCalPoint_t));
+        HAL_Delay(5);  // 写入间隔，确保EEPROM写入完成
+    }
+
+    // 保存校准点数 (使用新地址)
+    BL24C16_Write(0x0220, &g_calibration_data.fwd_points, 1);
+    BL24C16_Write(0x0221, &g_calibration_data.ref_points, 1);
+
+    // 保存频段增益修正 (使用新地址)
+    for (int i = 0; i < 11; i++) {
+        BL24C16_Write(0x0300 + i * 4, (uint8_t*)&g_calibration_data.band_gain_fwd[i], sizeof(float));
+        BL24C16_Write(0x0330 + i * 4, (uint8_t*)&g_calibration_data.band_gain_ref[i], sizeof(float));
+    }
+
+    // 保存频率微调 (使用新地址)
+    BL24C16_Write(0x0400, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float));
 
     // 保存校准完成标志
     g_calibration_data.is_calibrated = 1;
-    BL24C16_Write(0x0204, &g_calibration_data.is_calibrated, 1);
+    BL24C16_Write(0x0404, &g_calibration_data.is_calibrated, 1);
 }
 
 /**
@@ -714,7 +757,7 @@ uint8_t Calibration_GetBandIndex(float frequency)
 }
 
 /**
- * @brief 查表计算功率（线性插值）
+ * @brief 查表计算功率（线性插值，优化支持0W-2kW范围）
  */
 float Calibration_CalculatePowerFromTable(float voltage, PowerCalPoint_t* table, uint8_t points)
 {
@@ -722,17 +765,23 @@ float Calibration_CalculatePowerFromTable(float voltage, PowerCalPoint_t* table,
         return 0.0f;  // 无校准数据
     }
 
-    // 如果电压小于第一个点，使用第一个点的斜率外推
+    // 处理0W情况：电压接近0时返回0功率
+    if (voltage <= 0.001f) {  // 1mV以下认为是0功率
+        return 0.0f;
+    }
+
+    // 如果电压小于第一个校准点，使用第一个点的斜率外推
     if (voltage <= table[0].voltage) {
         if (points >= 2) {
             float slope = (table[1].power - table[0].power) / (table[1].voltage - table[0].voltage);
-            return table[0].power + slope * (voltage - table[0].voltage);
+            float extrapolated_power = table[0].power + slope * (voltage - table[0].voltage);
+            return (extrapolated_power > 0.0f) ? extrapolated_power : 0.0f;  // 确保不返回负功率
         } else {
             return table[0].power * (voltage / table[0].voltage);  // 线性比例
         }
     }
 
-    // 如果电压大于最后一个点，使用最后两个点的斜率外推
+    // 如果电压大于最后一个点，使用最后两个点的斜率外推（支持2kW以上）
     if (voltage >= table[points-1].voltage) {
         if (points >= 2) {
             float slope = (table[points-1].power - table[points-2].power) /
@@ -1012,14 +1061,18 @@ void Interface_DisplayCalPower(void)
 
     // 显示当前校准通道和点
     if (g_calibration_state.current_channel == 0) {
-        sprintf(str_buffer, "FWD Point %d/5", g_calibration_state.current_power_point + 1);
+        sprintf(str_buffer, "FWD Point %d/20 ", g_calibration_state.current_power_point + 1);
     } else {
-        sprintf(str_buffer, "REF Point %d/5", g_calibration_state.current_power_point + 1);
+        sprintf(str_buffer, "REF Point %d/20 ", g_calibration_state.current_power_point + 1);
     }
     Show_Str(10, 45, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // 显示目标功率
-    sprintf(str_buffer, "Target: %.0fW", g_calibration_state.target_power);
+    // 显示目标功率，支持kW单位
+    if (g_calibration_state.target_power >= 1000.0f) {
+        sprintf(str_buffer, "Target: %.1fkW", g_calibration_state.target_power / 1000.0f);
+    } else {
+        sprintf(str_buffer, "Target: %.0fW", g_calibration_state.target_power);
+    }
     Show_Str(10, 60, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
     if (g_calibration_state.is_stable) {
@@ -1375,7 +1428,7 @@ void Interface_DisplayAbout(void)
 
     Show_Str(0, 35, CYAN, BLACK, (uint8_t*)"RF Power Meter V1.0", 16, 0);//版本
     Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"Freq: 1Hz-100MHz", 12, 0);//频率
-    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"Power: 0.1W-1kW", 12, 0);//功率
+    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"Power: 0W-2kW", 12, 0);//功率范围更新
     Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"VSWR: 1.0-10.0", 12, 0);//驻波比
     Show_Str(10, 100, WHITE, BLACK, (uint8_t*)"Author: XUN YU TEK", 12, 0);//作者
 
