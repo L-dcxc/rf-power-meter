@@ -884,6 +884,49 @@ static void Calibration_ReadADCVoltage(float* fwd_voltage, float* ref_voltage)
 }
 
 /**
+ * @brief 显示ADC调试信息（用于校准界面）
+ * @param x: X坐标位置
+ * @param y: Y坐标起始位置
+ */
+static void Display_ADCInfo(uint16_t x, uint16_t y)
+{
+    char str_buffer[16];
+    uint32_t adc_forward, adc_reflected;
+    float fwd_voltage, ref_voltage;
+
+    // 启动ADC转换
+    HAL_ADC_Start(&hadc1);
+
+    // 读取PA2 (正向功率)
+    HAL_ADC_PollForConversion(&hadc1, 10);
+    adc_forward = HAL_ADC_GetValue(&hadc1);
+
+    // 读取PA3 (反射功率)
+    HAL_ADC_PollForConversion(&hadc1, 10);
+    adc_reflected = HAL_ADC_GetValue(&hadc1);
+
+    HAL_ADC_Stop(&hadc1);
+
+    // 转换为电压值 (3.3V参考电压，12位ADC)
+    fwd_voltage = (float)adc_forward * 3.3f / 4095.0f;
+    ref_voltage = (float)adc_reflected * 3.3f / 4095.0f;
+
+    // 显示ADC原始值
+    sprintf(str_buffer, "F:%d", (int)adc_forward);
+    Show_Str(x, y, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    sprintf(str_buffer, "R:%d", (int)adc_reflected);
+    Show_Str(x, y + 15, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    // 显示电压值
+    //sprintf(str_buffer, "%.2fV", fwd_voltage);
+    //Show_Str(x, y + 30, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    //sprintf(str_buffer, "%.2fV", ref_voltage);
+    //Show_Str(x, y + 45, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
+}
+
+/**
  * @brief 处理校准采样
  */
 void Calibration_ProcessSample(void)
@@ -1044,6 +1087,9 @@ void Interface_DisplayCalZero(void)
         Show_Str(10, 80, GREEN, BLACK, (uint8_t*)"Ready to sample", 12, 0);
     }
 
+    // 显示ADC调试信息
+    Display_ADCInfo(122, 30);
+
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"OK:Sample UP:Back", 12, 0);
 }
 
@@ -1085,6 +1131,9 @@ void Interface_DisplayCalPower(void)
         Show_Str(10, 90, YELLOW, BLACK, (uint8_t*)"Sampling...", 12, 0);
     }
 
+    // 显示ADC调试信息
+    Display_ADCInfo(122, 30);
+
     Show_Str(5, 105, GRAY, BLACK, (uint8_t*)"DOWN:Next OK:Cal", 12, 0);
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
 }
@@ -1121,6 +1170,9 @@ void Interface_DisplayCalBand(void)
         Show_Str(10, 90, YELLOW, BLACK, (uint8_t*)"Sampling...", 12, 0);
     }
 
+    // 显示ADC调试信息
+    Display_ADCInfo(122, 30);
+
     Show_Str(5, 105, GRAY, BLACK, (uint8_t*)"DOWN:Next OK:Cal", 12, 0);
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
 }
@@ -1146,6 +1198,9 @@ void Interface_DisplayCalReflect(void)
     if (g_calibration_state.sample_count > 0) {
         Show_Str(10, 90, YELLOW, BLACK, (uint8_t*)"Sampling...", 12, 0);
     }
+
+    // 显示ADC调试信息
+    Display_ADCInfo(122, 30);
 
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"OK:Cal UP:Back", 12, 0);
 }
@@ -1175,6 +1230,9 @@ void Interface_DisplayCalFreq(void)
     // 显示微调系数
     sprintf(str_buffer, "Trim: %.6f", g_calibration_data.freq_trim);
     Show_Str(10, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    // 显示ADC调试信息
+    Display_ADCInfo(122, 30);
 
     Show_Str(5, 105, GRAY, BLACK, (uint8_t*)"DOWN:Adj OK:Save", 12, 0);
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
