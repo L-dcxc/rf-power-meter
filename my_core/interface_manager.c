@@ -562,14 +562,16 @@ KeyValue_t InterfaceManager_GetKey(void)
 void InterfaceManager_SetBrightness(uint8_t level)
 {
     if (level > 10) level = 10;
-
+    if (level < 1) level = 1;
     g_interface_manager.brightness_level = level;
 
-    // 计算PWM占空比 (10%-100%)
-    uint16_t duty = 99 + (level * 90);
+    // 计算PWM占空比 (10%-100%)，Period=499
+    // level=1时约10%占空比(50), level=10时100%占空比(499)
+    uint16_t duty = (level * 449) / 10 + 50;  // 50-499范围
+    if (duty > 499) duty = 499;  // 限制最大值
 
     // 设置TIM3 CH3的PWM占空比 (PB0背光控制)
-    LCD_SetBacklight(duty);
+    LCD_SetBacklight(duty-1);
 }
 
 /**
@@ -587,12 +589,18 @@ void InterfaceManager_Beep(uint16_t duration_ms)
 
 /**
  * @brief 蜂鸣器定时处理函数（在TIM3中断中调用）
+ * @note TIM3现在是200Hz（每5ms中断一次），所以每次减5ms
  */
 void InterfaceManager_BuzzerProcess(void)
 {
     if (g_buzzer_state.is_active) {
         if (g_buzzer_state.duration_count > 0) {
-            g_buzzer_state.duration_count--;
+            // 每次减5，因为现在是5ms中断一次（200Hz）
+            if (g_buzzer_state.duration_count >= 5) {
+                g_buzzer_state.duration_count -= 5;
+            } else {
+                g_buzzer_state.duration_count = 0;
+            }
         } else {
             // 时间到，关闭蜂鸣器
             g_buzzer_state.is_active = 0;
@@ -919,11 +927,11 @@ static void Display_ADCInfo(uint16_t x, uint16_t y)
     Show_Str(x, y + 15, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 
     // 显示电压值
-    //sprintf(str_buffer, "%.2fV", fwd_voltage);
-    //Show_Str(x, y + 30, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
+    sprintf(str_buffer, "%.2fV", fwd_voltage);
+    Show_Str(x, y + 30, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    //sprintf(str_buffer, "%.2fV", ref_voltage);
-    //Show_Str(x, y + 45, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
+    sprintf(str_buffer, "%.2fV", ref_voltage);
+    Show_Str(x, y + 45, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 }
 
 /**
@@ -1327,7 +1335,7 @@ void Interface_DisplayMain(void)
     Show_Str(5, 115, CYAN, BLACK, (uint8_t*)"Freq:", 12, 0); //频率标签
     FreqResult_t freq_result;
     if (FreqCounter_GetResult(&freq_result) == 0) {
-        sprintf(str_buffer, "%.2f %s", freq_result.frequency_display,
+        sprintf(str_buffer, "%.2f %s", freq_result.frequency_display*16,
                 FreqCounter_GetUnitString(freq_result.unit));
         Show_Str(40, 115, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //频率数值
     } else {

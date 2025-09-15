@@ -54,7 +54,7 @@
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
-// Íâ²¿±äÁ¿ÉùÃ÷
+// å¤–éƒ¨å˜é‡å£°æ˜
 extern PowerResult_t g_power_result;
 extern RFParams_t g_rf_params;
 /* USER CODE END PV */
@@ -62,9 +62,9 @@ extern RFParams_t g_rf_params;
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
-// Êı¾İ²É¼¯ºÍ´¦Àíº¯ÊıÉùÃ÷
-void ProcessPowerMeasurement(void);     // ´¦Àí¹¦ÂÊ²âÁ¿
-void ProcessRFParameters(void);         // ´¦ÀíÉäÆµ²ÎÊı¼ÆËã
+// æ•°æ®é‡‡é›†å’Œå¤„ç†å‡½æ•°å£°æ˜
+void ProcessPowerMeasurement(void);     // å¤„ç†åŠŸç‡æµ‹é‡
+void ProcessRFParameters(void);         // å¤„ç†å°„é¢‘å‚æ•°è®¡ç®—
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -89,7 +89,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	HAL_Delay(400);//
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -111,18 +111,18 @@ int main(void)
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
   HAL_Delay(100);//
-  //HAL_TIM_Base_Start_IT(&htim2);          //Ê¹ÄÜÖĞ¶ÏÍâ²¿Ê±ÖÓÎŞĞèÄÚ²¿ÖĞ¶Ï
-  HAL_TIM_Base_Start_IT(&htim3);          //Ê¹ÄÜÖĞ¶Ï
-  //HAL_TIM_Base_Start_IT(&htim4);          //Ê¹ÄÜÖĞ¶Ï
-  // ³õÊ¼»¯LCD
+  //HAL_TIM_Base_Start_IT(&htim2);          //ä½¿èƒ½ä¸­æ–­å¤–éƒ¨æ—¶é’Ÿæ— éœ€å†…éƒ¨ä¸­æ–­
+  HAL_TIM_Base_Start_IT(&htim3);          //ä½¿èƒ½ä¸­æ–­
+  //HAL_TIM_Base_Start_IT(&htim4);          //ä½¿èƒ½ä¸­æ–­
+  // åˆå§‹åŒ–LCD
   LCD_Init();
-  LCD_SetBacklight(8000);  // ÉèÖÃ±³¹âÁÁ¶ÈÎª80%
+  LCD_SetBacklight(250);  // è®¾ç½®èƒŒå…‰äº®åº¦ä¸º80%
   LCD_Clear(BLACK);
 
-  // Ö´ĞĞÏµÍ³Æô¶¯ĞòÁĞ
+  // æ‰§è¡Œç³»ç»Ÿå¯åŠ¨åºåˆ—
   System_BootSequence();
 
-  // Æô¶¯Íê³ÉºóµÚÒ»´ÎÎ¹¹·
+  // å¯åŠ¨å®Œæˆåç¬¬ä¸€æ¬¡å–‚ç‹—
   HAL_IWDG_Refresh(&hiwdg);
 
   /* USER CODE END 2 */
@@ -131,28 +131,28 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // Ö÷Ñ­»·¿ªÊ¼Ê±Î¹¹·
+    // ä¸»å¾ªç¯å¼€å§‹æ—¶å–‚ç‹—
     HAL_IWDG_Refresh(&hiwdg);
 
-    // ´¦Àí¹¦ÂÊ²âÁ¿
+    // å¤„ç†åŠŸç‡æµ‹é‡
     ProcessPowerMeasurement();
 
-    // ´¦ÀíÉäÆµ²ÎÊı¼ÆËã
+    // å¤„ç†å°„é¢‘å‚æ•°è®¡ç®—
     ProcessRFParameters();
 
-    // ´¦Àí½çÃæ¹ÜÀíÆ÷ (°üÀ¨ÏÔÊ¾¸üĞÂºÍ°´¼ü´¦Àí)
+    // å¤„ç†ç•Œé¢ç®¡ç†å™¨ (åŒ…æ‹¬æ˜¾ç¤ºæ›´æ–°å’ŒæŒ‰é”®å¤„ç†)
     InterfaceManager_Process();
 
-    // ¼ì²éÆµÂÊ¼ÆĞÂ½á¹û
+    // æ£€æŸ¥é¢‘ç‡è®¡æ–°ç»“æœ
     if (FreqCounter_IsNewResult()) {
-      // ÆµÂÊ½á¹û»áÔÚ½çÃæÏÔÊ¾ÖĞ×Ô¶¯»ñÈ¡
+      // é¢‘ç‡ç»“æœä¼šåœ¨ç•Œé¢æ˜¾ç¤ºä¸­è‡ªåŠ¨è·å–
       FreqCounter_ClearNewResultFlag();
     }
 
-    // ½çÃæ´¦ÀíÍê³ÉºóÎ¹¹·
+    // ç•Œé¢å¤„ç†å®Œæˆåå–‚ç‹—
     HAL_IWDG_Refresh(&hiwdg);
 
-    // ¶ÌÔİÑÓÊ±
+    // çŸ­æš‚å»¶æ—¶
     //HAL_Delay(10);
 
     /* USER CODE END WHILE */
@@ -212,71 +212,71 @@ void SystemClock_Config(void)
 /* USER CODE BEGIN 4 */
 
 /**
- * @brief ´¦Àí¹¦ÂÊ²âÁ¿
+ * @brief å¤„ç†åŠŸç‡æµ‹é‡
  */
 void ProcessPowerMeasurement(void)
 {
     static uint32_t last_adc_time = 0;
     uint32_t current_time = HAL_GetTick();
 
-    // Ã¿100ms¶ÁÈ¡Ò»´ÎADC (¹¦ÂÊ¼ì²â)
+    // æ¯100msè¯»å–ä¸€æ¬¡ADC (åŠŸç‡æ£€æµ‹)
     if (current_time - last_adc_time >= 100) {
         last_adc_time = current_time;
 
-        // Æô¶¯ADC×ª»»
+        // å¯åŠ¨ADCè½¬æ¢
         HAL_ADC_Start(&hadc1);
 
-        // ¶ÁÈ¡PA2 (ÕıÏò¹¦ÂÊ)
+        // è¯»å–PA2 (æ­£å‘åŠŸç‡)
         HAL_ADC_PollForConversion(&hadc1, 10);
         uint32_t adc_forward = HAL_ADC_GetValue(&hadc1);
 
-        // ¶ÁÈ¡PA3 (·´Éä¹¦ÂÊ)
+        // è¯»å–PA3 (åå°„åŠŸç‡)
         HAL_ADC_PollForConversion(&hadc1, 10);
         uint32_t adc_reflected = HAL_ADC_GetValue(&hadc1);
 
         HAL_ADC_Stop(&hadc1);
 
-        // ×ª»»ÎªµçÑ¹Öµ (3.3V²Î¿¼µçÑ¹£¬12Î»ADC)
+        // è½¬æ¢ä¸ºç”µå‹å€¼ (3.3Vå‚è€ƒç”µå‹ï¼Œ12ä½ADC)
         float forward_voltage = (float)adc_forward * 3.3f / 4095.0f;
         float reflected_voltage = (float)adc_reflected * 3.3f / 4095.0f;
 
-        // ×ª»»Îª¹¦ÂÊÖµ (¸ù¾İÄãµÄÓ²¼ş±ê¶¨£¬ÕâÀïÊÇÊ¾Àı¹«Ê½)
-        float forward_power = forward_voltage * 10.0f;    // Ê¾Àı£º10W/V
+        // è½¬æ¢ä¸ºåŠŸç‡å€¼ (æ ¹æ®ä½ çš„ç¡¬ä»¶æ ‡å®šï¼Œè¿™é‡Œæ˜¯ç¤ºä¾‹å…¬å¼)
+        float forward_power = forward_voltage * 10.0f;    // ç¤ºä¾‹ï¼š10W/V
         float reflected_power = reflected_voltage * 10.0f;
 
-        // ¸üĞÂ¹¦ÂÊÊı¾İµ½½çÃæ¹ÜÀíÆ÷
+        // æ›´æ–°åŠŸç‡æ•°æ®åˆ°ç•Œé¢ç®¡ç†å™¨
         InterfaceManager_UpdatePower(forward_power, reflected_power);
     }
 }
 
 /**
- * @brief ´¦ÀíÉäÆµ²ÎÊı¼ÆËã
+ * @brief å¤„ç†å°„é¢‘å‚æ•°è®¡ç®—
  */
 void ProcessRFParameters(void)
 {
     static uint32_t last_calc_time = 0;
     uint32_t current_time = HAL_GetTick();
 
-    // Ã¿200ms¼ÆËãÒ»´ÎÉäÆµ²ÎÊı
+    // æ¯200msè®¡ç®—ä¸€æ¬¡å°„é¢‘å‚æ•°
     if (current_time - last_calc_time >= 200) {
         last_calc_time = current_time;
 
-        // ¼ÆËãÉäÆµ²ÎÊı
+        // è®¡ç®—å°„é¢‘å‚æ•°
         if (g_power_result.is_valid && g_power_result.forward_power > 0.01f) {
-            // ¼ÆËã·´ÉäÏµÊı ¦£ = ¡Ì(Pr/Pi)
+            // è®¡ç®—åå°„ç³»æ•° Î“ = âˆš(Pr/Pi)
             float reflection_coeff = sqrtf(g_power_result.reflected_power / g_power_result.forward_power);
 
-            // ¼ÆËã×¤²¨±È VSWR = (1 + |¦£|) / (1 - |¦£|)
+            // è®¡ç®—é©»æ³¢æ¯” VSWR = (1 + |Î“|) / (1 - |Î“|)
             float vswr = (1.0f + reflection_coeff) / (1.0f - reflection_coeff);
-            if (vswr < 1.0f) vswr = 1.0f;  // VSWR×îĞ¡ÖµÎª1
-            if (vswr > 10.0f) vswr = 10.0f; // ÏŞÖÆ×î´óÖµ
+            if (vswr < 1.0f) vswr = 1.0f;  // VSWRæœ€å°å€¼ä¸º1
+            if (vswr > 10.0f) vswr = 10.0f; // é™åˆ¶æœ€å¤§å€¼
 
-            // ¼ÆËã´«ÊäĞ§ÂÊ ¦Ç = 1 - Pr/Pi
+            // è®¡ç®—ä¼ è¾“æ•ˆç‡ Î· = 1 - Pr/Pi
             float transmission_eff = (1.0f - g_power_result.reflected_power / g_power_result.forward_power) * 100.0f;
             if (transmission_eff < 0.0f) transmission_eff = 0.0f;
             if (transmission_eff > 100.0f) transmission_eff = 100.0f;
 
-            // ¸üĞÂÉäÆµ²ÎÊıµ½½çÃæ¹ÜÀíÆ÷
+            // æ›´æ–°å°„é¢‘å‚æ•°åˆ°ç•Œé¢ç®¡ç†å™¨
             InterfaceManager_UpdateRFParams(vswr, reflection_coeff, transmission_eff);
         }
     }

@@ -63,7 +63,7 @@ void TIM4_IRQHandler(void);
 void SPI1_IRQHandler(void);
 void USART1_IRQHandler(void);
 /* USER CODE BEGIN EFP */
-// °´¼ü¼ì²âº¯ÊýÉùÃ÷
+// æŒ‰é”®æ£€æµ‹å‡½æ•°å£°æ˜Ž
 uint8_t GetKeyValue(void);
 /* USER CODE END EFP */
 

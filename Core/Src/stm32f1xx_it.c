@@ -54,7 +54,7 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-// °´¼ü¼ì²âÈ«¾Ö±äÁ¿
+// æŒ‰é”®æ£€æµ‹å…¨å±€å˜é‡
 uint8_t g_key_pressed_flag = 0;
 uint8_t g_current_key_value = 0;
 
@@ -310,72 +310,72 @@ void USART1_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 
-// Íâ²¿°´¼ü±äÁ¿ÉùÃ÷
+// å¤–éƒ¨æŒ‰é”®å˜é‡å£°æ˜
 extern uint8_t g_key_pressed_flag;
 extern uint8_t g_current_key_value;
 
 /**
- * @brief »ñÈ¡°´¼üÖµ
- * @return °´¼üÖµ£º0=ÎŞ°´¼ü, 1=UP, 2=DOWN, 3=OK
+ * @brief è·å–æŒ‰é”®å€¼
+ * @return æŒ‰é”®å€¼ï¼š0=æ— æŒ‰é”®, 1=UP, 2=DOWN, 3=OK
  */
 uint8_t GetKeyValue(void)
 {
-  // ´ÓTIM3ÖĞ¶Ï»ñÈ¡°´¼ü×´Ì¬
+  // ä»TIM3ä¸­æ–­è·å–æŒ‰é”®çŠ¶æ€
   if (g_key_pressed_flag) {
-    g_key_pressed_flag = 0;  // Çå³ı±êÖ¾
+    g_key_pressed_flag = 0;  // æ¸…é™¤æ ‡å¿—
     return g_current_key_value;
   }
-  return 0;  // ÎŞ°´¼ü
+  return 0;  // æ— æŒ‰é”®
 }
 /**
- * @brief TIMÖĞ¶ÏÖÜÆÚ»Øµ÷º¯Êı
- * @param htim: ¶¨Ê±Æ÷¾ä±úÖ¸Õë
- * @retval ÎŞ
+ * @brief TIMä¸­æ–­å‘¨æœŸå›è°ƒå‡½æ•°
+ * @param htim: å®šæ—¶å™¨å¥æŸ„æŒ‡é’ˆ
+ * @retval æ— 
  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  // TIM4ÖĞ¶Ï»Øµ÷ (1Ãë¶¨Ê±)
+  // TIM4ä¸­æ–­å›è°ƒ (1ç§’å®šæ—¶)
   if (htim->Instance == TIM4) {
     FreqCounter_TIM4_Callback(htim);
   }
 
-  // TIM2Òç³öÖĞ¶Ï»Øµ÷
+  // TIM2æº¢å‡ºä¸­æ–­å›è°ƒ
   if (htim->Instance == TIM2) {
     FreqCounter_TIM2_Callback(htim);
   }
 
-  // TIM3ÖĞ¶Ï»Øµ÷ (°´¼üÉ¨ÃèºÍ·äÃùÆ÷´¦Àí)
+  // TIM3ä¸­æ–­å›è°ƒ (æŒ‰é”®æ‰«æå’Œèœ‚é¸£å™¨å¤„ç†)
   if (htim->Instance == TIM3) {
     static uint8_t key_count = 0;
     static uint8_t key_debounce_count = 0;
     static uint8_t last_key_state = 0;
 
-    // ·äÃùÆ÷´¦Àí£¨Ã¿1msµ÷ÓÃÒ»´Î£©
+    // èœ‚é¸£å™¨å¤„ç†ï¼ˆç°åœ¨æ¯5msè°ƒç”¨ä¸€æ¬¡ï¼Œ200Hzï¼‰
     InterfaceManager_BuzzerProcess();
 
     key_count++;
-    if (key_count >= 20) {  // 20msÉ¨Ãè
+    if (key_count >= 4) {  // 4*5ms = 20msæ‰«æ
       key_count = 0;
 
-      // ¶ÁÈ¡°´¼ü×´Ì¬
-      uint8_t key_state = 0;  // 0=ÎŞ°´¼ü
+      // è¯»å–æŒ‰é”®çŠ¶æ€
+      uint8_t key_state = 0;  // 0=æ— æŒ‰é”®
       if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET) {
-        key_state = 1;  // UP¼ü
+        key_state = 1;  // UPé”®
       } else if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_13) == GPIO_PIN_RESET) {
-        key_state = 3;  // OK¼ü
+        key_state = 3;  // OKé”®
       } else if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14) == GPIO_PIN_RESET) {
-        key_state = 2;  // DOWN¼ü
+        key_state = 2;  // DOWNé”®
       }
 
-      // °´¼ü·À¶¶´¦Àí
+      // æŒ‰é”®é˜²æŠ–å¤„ç†
       if (key_state == last_key_state) {
         if (key_state != 0 && key_debounce_count == 0) {
-          // °´¼ü°´ÏÂÇÒÎ´´¦Àí¹ı£¬ÉèÖÃ±êÖ¾
+          // æŒ‰é”®æŒ‰ä¸‹ä¸”æœªå¤„ç†è¿‡ï¼Œè®¾ç½®æ ‡å¿—
           g_key_pressed_flag = 1;
           g_current_key_value = key_state;
-          key_debounce_count = 1;  // ¿ªÊ¼·À¶¶¼ÆÊı
+          key_debounce_count = 1;  // å¼€å§‹é˜²æŠ–è®¡æ•°
         } else if (key_state == 0) {
-          key_debounce_count = 0;  // °´¼üÊÍ·Å£¬Çå³ı·À¶¶
+          key_debounce_count = 0;  // æŒ‰é”®é‡Šæ”¾ï¼Œæ¸…é™¤é˜²æŠ–
         }
       } else {
         last_key_state = key_state;
