@@ -27,8 +27,12 @@ InterfaceManager_t g_interface_manager = {
     .alarm_enabled = 1,
     .vswr_alarm_threshold = 3.0f,
     .alarm_selected_item = 0,
+    .vswr_digit_position = 0,
     .last_update_time = 0,
-    .need_refresh = 1
+    .need_refresh = 1,
+    .key_press_start_time = 0,
+    .key_long_press_detected = 0,
+    .interface_first_enter = 1
 };
 PowerResult_t g_power_result = {
     .forward_power = 0.0f,
@@ -71,8 +75,9 @@ CalibrationData_t g_calibration_data = {
     },
     .fwd_points = 0,            // 初始无校准点
     .ref_points = 0,            // 初始无校准点
-    .band_gain_fwd = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
-    .band_gain_ref = {1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f},
+    .freq_gain_fwd = 1.0f,      // 频率增益修正系数(正向)
+    .freq_gain_ref = 1.0f,      // 频率增益修正系数(反射)
+    .cal_frequency = 14.0f,     // 标定频率(MHz)
     .freq_trim = 1.0f,
     .is_calibrated = 0
 };
@@ -80,7 +85,7 @@ CalibrationData_t g_calibration_data = {
 /* 校准状态全局变量 */
 CalibrationState_t g_calibration_state = {
     .current_step = CAL_STEP_CONFIRM,
-    .current_band = 0,
+    .cal_frequency = 14.0f,     // 默认标定频率14MHz
     .current_power_point = 0,
     .current_channel = 0,
     .sample_count = 0,
@@ -89,17 +94,14 @@ CalibrationState_t g_calibration_state = {
     .is_stable = 0,
     .stable_count = 0,
     .target_power = 100.0f,     // 默认目标功率100W
-    .power_cal_mode = 0         // 默认正向功率校准
+    .power_cal_mode = 0,        // 默认正向功率校准
+    .sample_completed = 0       // 采样未完成
 };
 
-/* 频段定义（11个HF常用频段）*/
-static const char* band_names[11] = {
-    "160m", "80m", "60m", "40m", "30m", "20m", "17m", "15m", "12m", "10m", "6m"
-};
-
-static const float band_frequencies[11] = {
-    1.8f, 3.5f, 5.3f, 7.0f, 10.1f, 14.0f, 18.1f, 21.0f, 24.9f, 28.0f, 50.0f  // MHz
-};
+/* 频率标定范围定义 */
+#define MIN_CAL_FREQ    1.0f    // 最小标定频率(MHz)
+#define MAX_CAL_FREQ    50.0f   // 最大标定频率(MHz)
+#define FREQ_STEP       1.0f    // 频率调整步长(MHz)
 
 /* 功率校准点定义 (0W-2kW范围，20个校准点) */
 static const float power_cal_points[20] = {
@@ -109,13 +111,7 @@ static const float power_cal_points[20] = {
     1600.0f, 1700.0f, 1800.0f, 1900.0f, 2000.0f  // 1600W-2000W
 };
 
-/* 反射功率校准点定义 (同样支持0W-2kW范围) */
-static const float ref_power_cal_points[20] = {
-    100.0f, 200.0f, 300.0f, 400.0f, 500.0f,      // 100W-500W
-    600.0f, 700.0f, 800.0f, 900.0f, 1000.0f,     // 600W-1000W
-    1100.0f, 1200.0f, 1300.0f, 1400.0f, 1500.0f, // 1100W-1500W
-    1600.0f, 1700.0f, 1800.0f, 1900.0f, 2000.0f  // 1600W-2000W
-};
+
 
 /* 菜单表定义 */
 const MenuItem_t menu_table[MAX_MENU_ITEMS] = {
@@ -156,7 +152,7 @@ int8_t InterfaceManager_Init(void)
         g_interface_manager.alarm_enabled = 1;     // 默认使能报警
     }
     if (BL24C16_Read(0x0002, (uint8_t*)&saved_vswr_threshold, sizeof(float)) == EEPROM_OK &&
-        saved_vswr_threshold >= 1.5f && saved_vswr_threshold <= 5.0f) {
+        saved_vswr_threshold >= 1.0f && saved_vswr_threshold <= 999.9f) {
         g_interface_manager.vswr_alarm_threshold = saved_vswr_threshold;
     } else {
         g_interface_manager.vswr_alarm_threshold = 3.0f;  // 默认VSWR报警阈值
@@ -213,6 +209,9 @@ void InterfaceManager_Process(void)
             case INTERFACE_CALIBRATION:
                 Interface_DisplayCalibration();
                 break;
+            case INTERFACE_CAL_STEP_SELECT:
+                Interface_DisplayCalStepSelect();
+                break;
             case INTERFACE_CAL_CONFIRM:
                 Interface_DisplayCalConfirm();
                 break;
@@ -225,12 +224,7 @@ void InterfaceManager_Process(void)
             case INTERFACE_CAL_BAND:
                 Interface_DisplayCalBand();
                 break;
-            case INTERFACE_CAL_REFLECT:
-                Interface_DisplayCalReflect();
-                break;
-            case INTERFACE_CAL_FREQ:
-                Interface_DisplayCalFreq();
-                break;
+
             case INTERFACE_CAL_COMPLETE:
                 Interface_DisplayCalComplete();
                 break;
@@ -254,7 +248,7 @@ void InterfaceManager_Process(void)
     
     // 处理校准采样（如果在校准模式中）
     if (g_interface_manager.current_interface >= INTERFACE_CAL_ZERO &&
-        g_interface_manager.current_interface <= INTERFACE_CAL_FREQ) {
+        g_interface_manager.current_interface <= INTERFACE_CAL_BAND) {
         Calibration_ProcessSample();
     }
 
@@ -263,6 +257,34 @@ void InterfaceManager_Process(void)
     if (key != KEY_NONE) {
         InterfaceManager_HandleKey(key, KEY_STATE_PRESSED);
         InterfaceManager_Beep(50);  // 按键反馈音
+    }
+}
+
+/**
+ * @brief 长按处理函数
+ */
+void InterfaceManager_HandleLongPress(uint8_t key)
+{
+    if (key == 1) {  // UP键长按
+        switch (g_interface_manager.current_interface) {
+            case INTERFACE_CAL_POWER:
+                // 功率标定界面长按UP键返回零点标定
+                Calibration_StartStep(CAL_STEP_ZERO);
+                InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
+                InterfaceManager_Beep(200);  // 长按反馈音
+                break;
+
+            case INTERFACE_CAL_BAND://不处理
+                // // 频率标定界面长按UP键返回零点标定
+                // Calibration_StartStep(CAL_STEP_ZERO);
+                // InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
+                // InterfaceManager_Beep(200);  // 长按反馈音
+                break;
+
+            default:
+                // 其他界面不处理长按
+                break;
+        }
     }
 }
 
@@ -303,6 +325,14 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             }
             break;
             
+        case INTERFACE_STANDARD:
+            // 设置界面按键处理
+            if (key == KEY_UP) {
+                // 返回菜单
+                InterfaceManager_SwitchTo(INTERFACE_MENU);
+            }
+            break;
+
         case INTERFACE_BRIGHTNESS:
             // 亮度界面按键处理
             if (key == KEY_UP) {
@@ -331,9 +361,9 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
                 // 返回菜单
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             } else if (key == KEY_DOWN) {
-                // 切换选中项（报警开关 ? VSWR阈值）
+                // 切换选中项（报警开关 → 百位 → 十位 → 个位 → 小数位 → 报警开关）
                 g_interface_manager.alarm_selected_item =
-                    (g_interface_manager.alarm_selected_item + 1) % 2;
+                    (g_interface_manager.alarm_selected_item + 1) % 5;
                 g_interface_manager.need_refresh = 1;
             } else if (key == KEY_OK) {
                 // 调节当前选中的项目
@@ -341,24 +371,40 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
                     // 切换报警开关
                     g_interface_manager.alarm_enabled = !g_interface_manager.alarm_enabled;
                 } else {
-                    // 调节VSWR阈值（循环：1.5 → 2.0 → 2.5 → 3.0 → 3.5 → 4.0 → 5.0 → 1.5）
-                    if (g_interface_manager.vswr_alarm_threshold >= 5.0f) {
-                        g_interface_manager.vswr_alarm_threshold = 1.5f;
-                    } else if (g_interface_manager.vswr_alarm_threshold >= 4.0f) {
-                        g_interface_manager.vswr_alarm_threshold = 5.0f;
-                    } else if (g_interface_manager.vswr_alarm_threshold >= 3.5f) {
-                        g_interface_manager.vswr_alarm_threshold = 4.0f;
-                    } else if (g_interface_manager.vswr_alarm_threshold >= 3.0f) {
-                        g_interface_manager.vswr_alarm_threshold = 3.5f;
-                    } else if (g_interface_manager.vswr_alarm_threshold >= 2.5f) {
-                        g_interface_manager.vswr_alarm_threshold = 3.0f;
-                    } else if (g_interface_manager.vswr_alarm_threshold >= 2.0f) {
-                        g_interface_manager.vswr_alarm_threshold = 2.5f;
-                    } else if (g_interface_manager.vswr_alarm_threshold >= 1.5f) {
-                        g_interface_manager.vswr_alarm_threshold = 2.0f;
-                    } else {
-                        g_interface_manager.vswr_alarm_threshold = 1.5f;
+                    // 调节VSWR阈值的各个位数（修复浮点精度问题）
+                    float current_value = g_interface_manager.vswr_alarm_threshold;
+                    // 转换为整数避免浮点精度问题
+                    int total_tenths = (int)(current_value * 10.0f + 0.5f);  // 四舍五入到0.1
+
+                    int hundreds = (total_tenths / 1000) % 10;
+                    int tens = (total_tenths / 100) % 10;
+                    int ones = (total_tenths / 10) % 10;
+                    int decimal = total_tenths % 10;
+
+                    switch (g_interface_manager.alarm_selected_item) {
+                        case 1: // 百位
+                            hundreds = (hundreds + 1) % 10;
+                            break;
+                        case 2: // 十位
+                            tens = (tens + 1) % 10;
+                            break;
+                        case 3: // 个位
+                            ones = (ones + 1) % 10;
+                            break;
+                        case 4: // 小数位
+                            decimal = (decimal + 1) % 10;
+                            break;
                     }
+
+                    // 重新计算VSWR值（使用整数计算避免精度问题）
+                    int new_total_tenths = hundreds * 1000 + tens * 100 + ones * 10 + decimal;
+                    float new_value = (float)new_total_tenths / 10.0f;
+
+                    // 限制范围 1.0-999.9
+                    if (new_value < 1.0f) new_value = 1.0f;
+                    if (new_value > 999.9f) new_value = 999.9f;
+
+                    g_interface_manager.vswr_alarm_threshold = new_value;
                 }
                 // 保存报警设置到EEPROM
                 BL24C16_Write(0x0001, &g_interface_manager.alarm_enabled, 1);
@@ -372,16 +418,53 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             if (key == KEY_UP) {
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             } else if (key == KEY_OK) {
-                // 开始校准向导
-                Calibration_StartStep(CAL_STEP_CONFIRM);
-                InterfaceManager_SwitchTo(INTERFACE_CAL_CONFIRM);
+                // 进入步骤选择界面
+                g_calibration_state.selected_step = 0;  // 默认选择完整标定
+                InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
+            }
+            break;
+
+        case INTERFACE_CAL_STEP_SELECT:
+            // 步骤选择界面按键处理
+            if (key == KEY_UP) {
+                InterfaceManager_SwitchTo(INTERFACE_CALIBRATION);
+            } else if (key == KEY_DOWN) {
+                // 切换选择项 (0→1→2→3→0循环)
+                g_calibration_state.selected_step = (g_calibration_state.selected_step + 1) % 4;
+                g_interface_manager.need_refresh = 1;
+            } else if (key == KEY_OK) {
+                // 开始选中的标定类型
+                switch (g_calibration_state.selected_step) {
+                    case 0:  // 完整标定
+                        g_calibration_state.is_single_step = 0;
+                        Calibration_StartStep(CAL_STEP_CONFIRM);
+                        InterfaceManager_SwitchTo(INTERFACE_CAL_CONFIRM);
+                        break;
+                    case 1:  // 零点标定
+                        g_calibration_state.is_single_step = 1;
+                        Calibration_StartStep(CAL_STEP_ZERO);
+                        InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
+                        break;
+                    case 2:  // 功率标定
+                        g_calibration_state.is_single_step = 1;
+                        Calibration_InitPowerStep();  // 初始化功率标定状态
+                        Calibration_StartStep(CAL_STEP_POWER);
+                        InterfaceManager_SwitchTo(INTERFACE_CAL_POWER);
+                        break;
+                    case 3:  // 频率标定
+                        g_calibration_state.is_single_step = 1;
+                        Calibration_InitBandStep();  // 初始化频率标定状态
+                        Calibration_StartStep(CAL_STEP_BAND);
+                        InterfaceManager_SwitchTo(INTERFACE_CAL_BAND);
+                        break;
+                }
             }
             break;
 
         case INTERFACE_CAL_CONFIRM:
             // 校准确认页按键处理
             if (key == KEY_UP) {
-                InterfaceManager_SwitchTo(INTERFACE_CALIBRATION);
+                InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
             } else if (key == KEY_OK) {
                 // 确认开始校准
                 Calibration_StartStep(CAL_STEP_ZERO);
@@ -407,7 +490,24 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
         case INTERFACE_CAL_POWER:
             // 功率校准按键处理
             if (key == KEY_UP) {
-                InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
+                // UP键：上一个校准点
+                if (g_calibration_state.current_channel == 0) {  // 正向功率校准
+                    if (g_calibration_state.current_power_point > 0) {
+                        g_calibration_state.current_power_point--;
+                        g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
+                    }
+                } else {  // 反射功率校准
+                    if (g_calibration_state.current_power_point > 0) {
+                        g_calibration_state.current_power_point--;
+                        g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
+                    } else {
+                        // 从反射第0点返回到正向最后一点
+                        g_calibration_state.current_channel = 0;
+                        g_calibration_state.current_power_point = 19;
+                        g_calibration_state.target_power = power_cal_points[19];
+                    }
+                }
+                g_interface_manager.need_refresh = 1;
             } else if (key == KEY_DOWN) {
                 // 切换到下一个校准点或通道
                 if (g_calibration_state.current_channel == 0) {  // 正向功率校准
@@ -418,16 +518,23 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
                         // 切换到反射功率校准
                         g_calibration_state.current_channel = 1;
                         g_calibration_state.current_power_point = 0;
-                        g_calibration_state.target_power = ref_power_cal_points[0];
+                        g_calibration_state.target_power = power_cal_points[0];
                     }
                 } else {  // 反射功率校准
                     if (g_calibration_state.current_power_point < 19) {  // 0-19共20个点
                         g_calibration_state.current_power_point++;
-                        g_calibration_state.target_power = ref_power_cal_points[g_calibration_state.current_power_point];
+                        g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
                     } else {
-                        // 完成功率校准，进入下一步
-                        Calibration_StartStep(CAL_STEP_BAND);
-                        InterfaceManager_SwitchTo(INTERFACE_CAL_BAND);
+                        // 完成功率校准
+                        if (g_calibration_state.is_single_step) {
+                            // 单步标定完成，返回步骤选择界面
+                            InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
+                        } else {
+                            // 完整标定，进入下一步
+                            Calibration_InitBandStep();  // 初始化频率标定状态
+                            Calibration_StartStep(CAL_STEP_BAND);
+                            InterfaceManager_SwitchTo(INTERFACE_CAL_BAND);
+                        }
                         return;
                     }
                 }
@@ -440,6 +547,44 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
                     g_calibration_state.sample_sum_ref = 0.0f;
                     g_interface_manager.need_refresh = 1;
                 }
+            }
+            // 长按UP键返回零点标定功能已实现
+            break;
+
+        case INTERFACE_CAL_BAND:
+            // 频率标定按键处理
+            if (key == KEY_UP) {
+                // 返回功率校准时重置状态
+                Calibration_StartStep(CAL_STEP_POWER);
+                InterfaceManager_SwitchTo(INTERFACE_CAL_POWER);
+            } else if (key == KEY_DOWN) {
+                // 调整标定频率 (+1MHz，循环)
+                g_calibration_state.cal_frequency += FREQ_STEP;
+                if (g_calibration_state.cal_frequency > MAX_CAL_FREQ) {
+                    g_calibration_state.cal_frequency = MIN_CAL_FREQ;  // 循环到最小值
+                }
+                g_interface_manager.need_refresh = 1;
+            } else if (key == KEY_OK) {
+                // 开始频率标定采样
+                if (g_calibration_state.sample_count == 0 && g_calibration_state.is_stable) {
+                    g_calibration_state.sample_count = 1;  // 开始采样
+                    g_calibration_state.sample_sum_fwd = 0.0f;
+                    g_calibration_state.sample_sum_ref = 0.0f;
+                    g_interface_manager.need_refresh = 1;
+                }
+            }
+            break;
+
+
+
+
+
+        case INTERFACE_CAL_COMPLETE:
+            // 校准完成按键处理
+            if (key == KEY_UP) {
+                InterfaceManager_SwitchTo(INTERFACE_MENU);
+            } else if (key == KEY_OK) {
+                InterfaceManager_SwitchTo(INTERFACE_MAIN);
             }
             break;
 
@@ -461,6 +606,7 @@ void InterfaceManager_SwitchTo(InterfaceIndex_t interface)
     if (interface != g_interface_manager.current_interface) {
         g_interface_manager.current_interface = interface;
         g_interface_manager.need_refresh = 1;
+        g_interface_manager.interface_first_enter = 1;  // 设置首次进入标志
         LCD_Clear(BLACK);  // 清屏
 
         // 界面切换时的特殊处理
@@ -483,22 +629,12 @@ void InterfaceManager_ForceRefresh(void)
  */
 void InterfaceManager_UpdatePower(float forward_power, float reflected_power)
 {
-    // 自动选择功率单位
-    if (forward_power >= 1000.0f) {
-        g_power_result.forward_power = forward_power / 1000.0f;
-        g_power_result.forward_unit = POWER_UNIT_KW;
-    } else {
-        g_power_result.forward_power = forward_power;
-        g_power_result.forward_unit = POWER_UNIT_W;
-    }
-    
-    if (reflected_power >= 1000.0f) {
-        g_power_result.reflected_power = reflected_power / 1000.0f;
-        g_power_result.reflected_unit = POWER_UNIT_KW;
-    } else {
-        g_power_result.reflected_power = reflected_power;
-        g_power_result.reflected_unit = POWER_UNIT_W;
-    }
+    // 功率显示为整数W (0-2000W范围)
+    g_power_result.forward_power = forward_power;
+    g_power_result.forward_unit = POWER_UNIT_W;
+
+    g_power_result.reflected_power = reflected_power;
+    g_power_result.reflected_unit = POWER_UNIT_W;
     
     g_power_result.is_valid = 1;
     
@@ -518,7 +654,9 @@ void InterfaceManager_UpdateRFParams(float vswr, float reflection_coeff, float t
     g_rf_params.transmission_eff = transmission_eff;
     
     // 根据VSWR值设置颜色警示
-    if (vswr <= 1.5f) {
+    if (vswr >= 999.0f) {
+        g_rf_params.vswr_color = VSWR_COLOR_RED;  // 无穷大显示红色
+    } else if (vswr <= 1.5f) {
         g_rf_params.vswr_color = VSWR_COLOR_GREEN;
     } else if (vswr <= 2.0f) {
         g_rf_params.vswr_color = VSWR_COLOR_YELLOW;
@@ -528,8 +666,12 @@ void InterfaceManager_UpdateRFParams(float vswr, float reflection_coeff, float t
     
     g_rf_params.is_valid = 1;
     
-    // 检查是否需要报警
-    if (g_interface_manager.alarm_enabled && vswr > g_interface_manager.vswr_alarm_threshold) {
+    // 检查是否需要报警（标定界面不报警）
+    if (g_interface_manager.alarm_enabled &&
+        vswr > g_interface_manager.vswr_alarm_threshold &&
+        g_interface_manager.current_interface != INTERFACE_CAL_ZERO &&
+        g_interface_manager.current_interface != INTERFACE_CAL_POWER &&
+        g_interface_manager.current_interface != INTERFACE_CAL_BAND) {
         InterfaceManager_Beep(500);  // 报警蜂鸣
     }
     
@@ -621,7 +763,7 @@ void Calibration_Init(void)
 
     // 重置校准状态
     g_calibration_state.current_step = CAL_STEP_CONFIRM;
-    g_calibration_state.current_band = 0;
+    g_calibration_state.cal_frequency = 14.0f;
     g_calibration_state.current_power_point = 0;
     g_calibration_state.current_channel = 0;
     g_calibration_state.sample_count = 0;
@@ -631,6 +773,7 @@ void Calibration_Init(void)
     g_calibration_state.stable_count = 0;
     g_calibration_state.target_power = 100.0f;
     g_calibration_state.power_cal_mode = 0;
+    g_calibration_state.sample_completed = 0;
 }
 
 /**
@@ -641,7 +784,7 @@ void Calibration_Init(void)
  * 0x0020-0x011F: 正向功率校准表 (20点×8字节=160字节)
  * 0x0120-0x021F: 反射功率校准表 (20点×8字节=160字节)
  * 0x0220-0x0221: 校准点数 (2字节)
- * 0x0300-0x035B: 频段增益修正 (11×8字节=88字节)
+ * 0x0300-0x030B: 频率增益修正 (3×4字节=12字节)
  * 0x0400-0x0407: 频率微调和标志 (8字节)
  */
 void Calibration_LoadFromEEPROM(void)
@@ -659,9 +802,9 @@ void Calibration_LoadFromEEPROM(void)
     for (int i = 0; i < 20; i++) {
         uint16_t addr = 0x0020 + i * sizeof(PowerCalPoint_t);
         if (BL24C16_Read(addr, (uint8_t*)&g_calibration_data.fwd_table[i], sizeof(PowerCalPoint_t)) != EEPROM_OK) {
-            // 使用默认值
+            // 使用默认值 (0V=0W, 2V=2kW的线性关系)
             g_calibration_data.fwd_table[i].power = power_cal_points[i];
-            g_calibration_data.fwd_table[i].voltage = (i + 1) * 1.0f;  // 默认电压
+            g_calibration_data.fwd_table[i].voltage = power_cal_points[i] / 1000.0f;  // 1000W/V系数
         }
     }
 
@@ -669,9 +812,9 @@ void Calibration_LoadFromEEPROM(void)
     for (int i = 0; i < 20; i++) {
         uint16_t addr = 0x0120 + i * sizeof(PowerCalPoint_t);
         if (BL24C16_Read(addr, (uint8_t*)&g_calibration_data.ref_table[i], sizeof(PowerCalPoint_t)) != EEPROM_OK) {
-            // 使用默认值
-            g_calibration_data.ref_table[i].power = ref_power_cal_points[i];
-            g_calibration_data.ref_table[i].voltage = (i + 1) * 0.1f;  // 默认电压
+            // 使用默认值 (0V=0W, 2V=2kW的线性关系)
+            g_calibration_data.ref_table[i].power = power_cal_points[i];
+            g_calibration_data.ref_table[i].voltage = power_cal_points[i] / 1000.0f;  // 1000W/V系数
         }
     }
 
@@ -683,14 +826,27 @@ void Calibration_LoadFromEEPROM(void)
         g_calibration_data.ref_points = 0;
     }
 
-    // 读取频段增益修正 (调整地址避免冲突)
-    for (int i = 0; i < 11; i++) {
-        if (BL24C16_Read(0x0300 + i * 4, (uint8_t*)&g_calibration_data.band_gain_fwd[i], sizeof(float)) != EEPROM_OK) {
-            g_calibration_data.band_gain_fwd[i] = 1.0f;
-        }
-        if (BL24C16_Read(0x0330 + i * 4, (uint8_t*)&g_calibration_data.band_gain_ref[i], sizeof(float)) != EEPROM_OK) {
-            g_calibration_data.band_gain_ref[i] = 1.0f;
-        }
+    // 读取频率增益修正系数
+    if (BL24C16_Read(0x0300, (uint8_t*)&g_calibration_data.freq_gain_fwd, sizeof(float)) != EEPROM_OK) {
+        g_calibration_data.freq_gain_fwd = 1.0f;
+    }
+    if (BL24C16_Read(0x0304, (uint8_t*)&g_calibration_data.freq_gain_ref, sizeof(float)) != EEPROM_OK) {
+        g_calibration_data.freq_gain_ref = 1.0f;
+    }
+    if (BL24C16_Read(0x0308, (uint8_t*)&g_calibration_data.cal_frequency, sizeof(float)) != EEPROM_OK) {
+        g_calibration_data.cal_frequency = 14.0f;  // 默认14MHz
+    }
+
+    // 验证频率增益数据有效性
+    if (g_calibration_data.freq_gain_fwd < 0.1f || g_calibration_data.freq_gain_fwd > 10.0f ||
+        isnan(g_calibration_data.freq_gain_fwd) || isinf(g_calibration_data.freq_gain_fwd)) {
+        g_calibration_data.freq_gain_fwd = 1.0f;
+
+    }
+    if (g_calibration_data.freq_gain_ref < 0.1f || g_calibration_data.freq_gain_ref > 10.0f ||
+        isnan(g_calibration_data.freq_gain_ref) || isinf(g_calibration_data.freq_gain_ref)) {
+        g_calibration_data.freq_gain_ref = 1.0f;
+
     }
 
     // 读取频率微调 (调整地址避免冲突)
@@ -698,10 +854,38 @@ void Calibration_LoadFromEEPROM(void)
         g_calibration_data.freq_trim = 1.0f;
     }
 
+    // 验证freq_trim数据有效性，防止EEPROM损坏
+    if (g_calibration_data.freq_trim < 0.1f || g_calibration_data.freq_trim > 10.0f ||
+        isnan(g_calibration_data.freq_trim) || isinf(g_calibration_data.freq_trim)) {
+        g_calibration_data.freq_trim = 1.0f;  // 重置为安全默认值
+
+    }
+
     // 读取校准完成标志
     if (BL24C16_Read(0x0404, &g_calibration_data.is_calibrated, 1) != EEPROM_OK) {
         g_calibration_data.is_calibrated = 0;
     }
+
+    // 一次性清除损坏的EEPROM数据（临时修复）
+    static uint8_t eeprom_cleared = 0;
+    if (!eeprom_cleared) {
+
+        g_calibration_data.freq_trim = 1.0f;
+        g_calibration_data.freq_gain_fwd = 1.0f;
+        g_calibration_data.freq_gain_ref = 1.0f;
+        g_calibration_data.cal_frequency = 14.0f;
+
+        // 保存正确的数据到EEPROM
+        BL24C16_Write(0x0400, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float));
+        BL24C16_Write(0x0300, (uint8_t*)&g_calibration_data.freq_gain_fwd, sizeof(float));
+        BL24C16_Write(0x0304, (uint8_t*)&g_calibration_data.freq_gain_ref, sizeof(float));
+        BL24C16_Write(0x0308, (uint8_t*)&g_calibration_data.cal_frequency, sizeof(float));
+
+        eeprom_cleared = 1;
+
+    }
+
+
 }
 
 /**
@@ -731,11 +915,10 @@ void Calibration_SaveToEEPROM(void)
     BL24C16_Write(0x0220, &g_calibration_data.fwd_points, 1);
     BL24C16_Write(0x0221, &g_calibration_data.ref_points, 1);
 
-    // 保存频段增益修正 (使用新地址)
-    for (int i = 0; i < 11; i++) {
-        BL24C16_Write(0x0300 + i * 4, (uint8_t*)&g_calibration_data.band_gain_fwd[i], sizeof(float));
-        BL24C16_Write(0x0330 + i * 4, (uint8_t*)&g_calibration_data.band_gain_ref[i], sizeof(float));
-    }
+    // 保存频率增益修正系数
+    BL24C16_Write(0x0300, (uint8_t*)&g_calibration_data.freq_gain_fwd, sizeof(float));
+    BL24C16_Write(0x0304, (uint8_t*)&g_calibration_data.freq_gain_ref, sizeof(float));
+    BL24C16_Write(0x0308, (uint8_t*)&g_calibration_data.cal_frequency, sizeof(float));
 
     // 保存频率微调 (使用新地址)
     BL24C16_Write(0x0400, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float));
@@ -745,24 +928,7 @@ void Calibration_SaveToEEPROM(void)
     BL24C16_Write(0x0404, &g_calibration_data.is_calibrated, 1);
 }
 
-/**
- * @brief 获取频段索引
- */
-uint8_t Calibration_GetBandIndex(float frequency)
-{
-    // 根据频率返回对应的频段索引(0-10)
-    if (frequency < 2.5f) return 0;        // 160m (1.8MHz)
-    else if (frequency < 4.5f) return 1;   // 80m (3.5MHz)
-    else if (frequency < 6.0f) return 2;   // 60m (5.3MHz)
-    else if (frequency < 8.5f) return 3;   // 40m (7.0MHz)
-    else if (frequency < 12.0f) return 4;  // 30m (10.1MHz)
-    else if (frequency < 16.0f) return 5;  // 20m (14.0MHz)
-    else if (frequency < 19.5f) return 6;  // 17m (18.1MHz)
-    else if (frequency < 23.0f) return 7;  // 15m (21.0MHz)
-    else if (frequency < 26.5f) return 8;  // 12m (24.9MHz)
-    else if (frequency < 35.0f) return 9;  // 10m (28.0MHz)
-    else return 10;                        // 6m (50.0MHz)
-}
+
 
 /**
  * @brief 查表计算功率（线性插值，优化支持0W-2kW范围）
@@ -817,8 +983,8 @@ float Calibration_CalculatePowerFromTable(float voltage, PowerCalPoint_t* table,
 float Calibration_ApplyCorrection(float raw_voltage, uint8_t is_forward, float frequency)
 {
     if (!g_calibration_data.is_calibrated) {
-        // 未校准时使用简单线性转换
-        return (raw_voltage - (is_forward ? g_calibration_data.forward_offset : g_calibration_data.reflected_offset)) * 100.0f;
+        // 未校准时使用简单线性转换 (0V=0W, 2V=2kW)
+        return (raw_voltage - (is_forward ? g_calibration_data.forward_offset : g_calibration_data.reflected_offset)) * 1000.0f;
     }
 
     // 去除零点偏移
@@ -835,11 +1001,38 @@ float Calibration_ApplyCorrection(float raw_voltage, uint8_t is_forward, float f
         base_power = Calibration_CalculatePowerFromTable(corrected_voltage, g_calibration_data.ref_table, g_calibration_data.ref_points);
     }
 
-    // 应用频段增益修正
-    uint8_t band_index = Calibration_GetBandIndex(frequency);
-    float final_power = base_power * (is_forward ? g_calibration_data.band_gain_fwd[band_index] : g_calibration_data.band_gain_ref[band_index]);
+    // 应用频率增益修正
+    float final_power = base_power * (is_forward ? g_calibration_data.freq_gain_fwd : g_calibration_data.freq_gain_ref);
 
     return (final_power > 0.0f) ? final_power : 0.0f;
+}
+
+/**
+ * @brief 计算功率（简化接口，自动获取当前频率）
+ */
+float Calibration_CalculatePower(float voltage, uint8_t is_forward)
+{
+    // 临时调试：直接调用查表函数，跳过频率修正
+    if (!g_calibration_data.is_calibrated) {
+        // 未校准时使用简单线性转换 (0V=0W, 2V=2kW)
+        return (voltage - (is_forward ? g_calibration_data.forward_offset : g_calibration_data.reflected_offset)) * 1000.0f;
+    }
+
+    // 去除零点偏移
+    float corrected_voltage = voltage - (is_forward ? g_calibration_data.forward_offset : g_calibration_data.reflected_offset);
+    if (corrected_voltage < 0.0f) {
+        corrected_voltage = 0.0f;
+    }
+
+    // 直接查表计算功率，暂时不应用频率增益修正
+    float base_power;
+    if (is_forward) {
+        base_power = Calibration_CalculatePowerFromTable(corrected_voltage, g_calibration_data.fwd_table, g_calibration_data.fwd_points);
+    } else {
+        base_power = Calibration_CalculatePowerFromTable(corrected_voltage, g_calibration_data.ref_table, g_calibration_data.ref_points);
+    }
+
+    return (base_power > 0.0f) ? base_power : 0.0f;
 }
 
 /**
@@ -851,21 +1044,31 @@ void Calibration_StartStep(CalibrationStep_t step)
     g_calibration_state.sample_count = 0;
     g_calibration_state.sample_sum_fwd = 0.0f;
     g_calibration_state.sample_sum_ref = 0.0f;
+    g_calibration_state.sample_completed = 0;  // 重置完成标志
     g_calibration_state.is_stable = 0;
     g_calibration_state.stable_count = 0;
 
-    // 根据步骤初始化特定状态
-    if (step == CAL_STEP_POWER) {
-        g_calibration_state.current_power_point = 0;
-        g_calibration_state.current_channel = 0;  // 从正向功率开始
-        g_calibration_state.target_power = power_cal_points[0];  // 100W
-        g_calibration_state.power_cal_mode = 0;
-    } else if (step == CAL_STEP_BAND) {
-        g_calibration_state.current_band = 0;
-        g_calibration_state.target_power = 100.0f;  // 频段校准使用固定功率
-    }
-
     g_interface_manager.need_refresh = 1;
+}
+
+/**
+ * @brief 初始化功率标定（只在开始时调用一次）
+ */
+void Calibration_InitPowerStep(void)
+{
+    g_calibration_state.current_power_point = 0;
+    g_calibration_state.current_channel = 0;  // 从正向功率开始
+    g_calibration_state.target_power = power_cal_points[0];  // 100W
+    g_calibration_state.power_cal_mode = 0;
+}
+
+/**
+ * @brief 初始化频率标定（只在开始时调用一次）
+ */
+void Calibration_InitBandStep(void)
+{
+    g_calibration_state.cal_frequency = 14.0f;  // 默认14MHz
+    g_calibration_state.target_power = 100.0f;  // 频率标定使用固定功率
 }
 
 /**
@@ -873,22 +1076,33 @@ void Calibration_StartStep(CalibrationStep_t step)
  */
 static void Calibration_ReadADCVoltage(float* fwd_voltage, float* ref_voltage)
 {
-    // 启动ADC转换
-    HAL_ADC_Start(&hadc1);
+    // 启动ADC转换并读取值
+    extern ADC_HandleTypeDef hadc1;
 
-    // 读取PA2 (正向功率)
+    // 配置并读取Channel 2 (PA2正向功率)
+    ADC_ChannelConfTypeDef sConfig = {0};
+    sConfig.Channel = ADC_CHANNEL_2;
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+
+    HAL_ADC_Start(&hadc1);
     HAL_ADC_PollForConversion(&hadc1, 10);
     uint32_t adc_forward = HAL_ADC_GetValue(&hadc1);
-
-    // 读取PA3 (反射功率)
-    HAL_ADC_PollForConversion(&hadc1, 10);
-    uint32_t adc_reflected = HAL_ADC_GetValue(&hadc1);
-
     HAL_ADC_Stop(&hadc1);
 
-    // 转换为电压值 (3.3V参考电压，12位ADC)
-    *fwd_voltage = (float)adc_forward * 3.3f / 4095.0f;
-    *ref_voltage = (float)adc_reflected * 3.3f / 4095.0f;
+    // 配置并读取Channel 3 (PA3反射功率)
+    sConfig.Channel = ADC_CHANNEL_3;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, 10);
+    uint32_t adc_reflected = HAL_ADC_GetValue(&hadc1);
+    HAL_ADC_Stop(&hadc1);
+
+    // 转换为电压值 (2.5V参考电压，12位ADC)
+    *fwd_voltage = (float)adc_forward * 2.5f / 4095.0f;
+    *ref_voltage = (float)adc_reflected * 2.5f / 4095.0f;
 }
 
 /**
@@ -902,35 +1116,46 @@ static void Display_ADCInfo(uint16_t x, uint16_t y)
     uint32_t adc_forward, adc_reflected;
     float fwd_voltage, ref_voltage;
 
-    // 启动ADC转换
-    HAL_ADC_Start(&hadc1);
+    // 启动ADC转换并读取值
+    extern ADC_HandleTypeDef hadc1;
 
-    // 读取PA2 (正向功率)
+    // 配置并读取Channel 2 (PA2正向功率)
+    ADC_ChannelConfTypeDef sConfig = {0};
+    sConfig.Channel = ADC_CHANNEL_2;
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+
+    HAL_ADC_Start(&hadc1);
     HAL_ADC_PollForConversion(&hadc1, 10);
     adc_forward = HAL_ADC_GetValue(&hadc1);
-
-    // 读取PA3 (反射功率)
-    HAL_ADC_PollForConversion(&hadc1, 10);
-    adc_reflected = HAL_ADC_GetValue(&hadc1);
-
     HAL_ADC_Stop(&hadc1);
 
-    // 转换为电压值 (3.3V参考电压，12位ADC)
-    fwd_voltage = (float)adc_forward * 3.3f / 4095.0f;
-    ref_voltage = (float)adc_reflected * 3.3f / 4095.0f;
+    // 配置并读取Channel 3 (PA3反射功率)
+    sConfig.Channel = ADC_CHANNEL_3;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, 10);
+    adc_reflected = HAL_ADC_GetValue(&hadc1);
+    HAL_ADC_Stop(&hadc1);
+
+    // 转换为电压值 (2.5V参考电压，12位ADC)
+    fwd_voltage = (float)adc_forward * 2.5f / 4095.0f;
+    ref_voltage = (float)adc_reflected * 2.5f / 4095.0f;
 
     // 显示ADC原始值
-    sprintf(str_buffer, "F:%d", (int)adc_forward);
+    sprintf(str_buffer, "F:%4d", (int)adc_forward);
     Show_Str(x, y, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    sprintf(str_buffer, "R:%d", (int)adc_reflected);
+    sprintf(str_buffer, "R:%4d", (int)adc_reflected);
     Show_Str(x, y + 15, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 
     // 显示电压值
-    sprintf(str_buffer, "%.2fV", fwd_voltage);
+    sprintf(str_buffer, "%5.2fV", fwd_voltage);
     Show_Str(x, y + 30, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    sprintf(str_buffer, "%.2fV", ref_voltage);
+    sprintf(str_buffer, "%5.2fV", ref_voltage);
     Show_Str(x, y + 45, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 }
 
@@ -967,17 +1192,49 @@ void Calibration_ProcessSample(void)
         g_calibration_state.sample_sum_ref += current_ref;
         g_calibration_state.sample_count++;
 
-        // 采样完成（32次）
-        if (g_calibration_state.sample_count >= 32) {
-            float avg_fwd = g_calibration_state.sample_sum_fwd / 32.0f;
-            float avg_ref = g_calibration_state.sample_sum_ref / 32.0f;
+        // 采样完成（10次）
+        if (g_calibration_state.sample_count >= 10) {
+            // 修复：实际采样次数是sample_count-1次（从1开始计数）
+            uint8_t actual_samples = g_calibration_state.sample_count - 1;
+            float avg_fwd = g_calibration_state.sample_sum_fwd / (float)actual_samples;
+            float avg_ref = g_calibration_state.sample_sum_ref / (float)actual_samples;
+
+            printf("Actual samples taken: %d\r\n", actual_samples);
+
+            // 设置完成标志，显示完成提示
+            g_calibration_state.sample_completed = 1;
+            g_interface_manager.need_refresh = 1;
+
+            // 串口调试输出采样结果
+            printf("\r\n=== Calibration Sample Complete ===\r\n");
+            printf("Step: %d\r\n", g_calibration_state.current_step);
+            printf("Average Forward: %.3fV\r\n", avg_fwd);
+            printf("Average Reflected: %.3fV\r\n", avg_ref);
 
             // 根据当前步骤处理采样结果
             switch (g_calibration_state.current_step) {
                 case CAL_STEP_ZERO:
                     g_calibration_data.forward_offset = avg_fwd;
                     g_calibration_data.reflected_offset = avg_ref;
+
+                    printf("Zero calibration: Fwd=%.3fV, Ref=%.3fV\r\n", avg_fwd, avg_ref);
+
+                    // 保存零点数据到EEPROM
+                    Calibration_SaveToEEPROM();
+
                     InterfaceManager_Beep(200);  // 成功提示音
+
+                    // 延迟后进入下一步或返回选择界面
+                    HAL_Delay(1000);  // 显示完成提示1秒
+                    if (g_calibration_state.is_single_step) {
+                        // 单步标定完成，返回步骤选择界面
+                        InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
+                    } else {
+                        // 完整标定，继续下一步：功率校准
+                        Calibration_InitPowerStep();  // 初始化功率标定状态
+                        Calibration_StartStep(CAL_STEP_POWER);
+                        InterfaceManager_SwitchTo(INTERFACE_CAL_POWER);
+                    }
                     break;
 
                 case CAL_STEP_POWER:
@@ -987,21 +1244,67 @@ void Calibration_ProcessSample(void)
                         uint8_t channel = g_calibration_state.current_channel;
 
                         if (channel == 0) {  // 正向功率校准
+                            float corrected_voltage = avg_fwd - g_calibration_data.forward_offset;
                             g_calibration_data.fwd_table[point].power = g_calibration_state.target_power;
-                            g_calibration_data.fwd_table[point].voltage = avg_fwd - g_calibration_data.forward_offset;
+                            g_calibration_data.fwd_table[point].voltage = corrected_voltage;
                             g_calibration_data.fwd_points = point + 1;
+
+                            printf("Forward Power Cal P%d: %.0fW @ %.3fV (Raw=%.3fV, Offset=%.3fV)\r\n",
+                                   point, g_calibration_state.target_power, corrected_voltage, avg_fwd, g_calibration_data.forward_offset);
                         } else {  // 反射功率校准
+                            float corrected_voltage = avg_ref - g_calibration_data.reflected_offset;
                             g_calibration_data.ref_table[point].power = g_calibration_state.target_power;
-                            g_calibration_data.ref_table[point].voltage = avg_ref - g_calibration_data.reflected_offset;
+                            g_calibration_data.ref_table[point].voltage = corrected_voltage;
                             g_calibration_data.ref_points = point + 1;
+
+                            printf("Reflected Power Cal P%d: %.0fW @ %.3fV (Raw=%.3fV, Offset=%.3fV)\r\n",
+                                   point, g_calibration_state.target_power, corrected_voltage, avg_ref, g_calibration_data.reflected_offset);
                         }
                         InterfaceManager_Beep(200);
+
+                        // 保存当前标定点到EEPROM
+                        Calibration_SaveToEEPROM();
+
+                        // 延迟显示完成提示
+                        HAL_Delay(800);  // 显示完成提示0.8秒
+
+                        // 自动进入下一个校准点
+                        if (channel == 0) {  // 正向功率校准
+                            if (point < 19) {  // 还有更多正向点
+                                g_calibration_state.current_power_point++;
+                                g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
+                                Calibration_StartStep(CAL_STEP_POWER);  // 重置采样状态
+                            } else {
+                                // 切换到反射功率校准
+                                g_calibration_state.current_channel = 1;
+                                g_calibration_state.current_power_point = 0;
+                                g_calibration_state.target_power = power_cal_points[0];
+                                Calibration_StartStep(CAL_STEP_POWER);  // 重置采样状态
+                            }
+                        } else {  // 反射功率校准
+                            if (point < 19) {  // 还有更多反射点
+                                g_calibration_state.current_power_point++;
+                                g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
+                                Calibration_StartStep(CAL_STEP_POWER);  // 重置采样状态
+                            } else {
+                                // 完成功率校准
+                                if (g_calibration_state.is_single_step) {
+                                    // 单步标定完成，返回步骤选择界面
+                                    InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
+                                } else {
+                                    // 完整标定，进入下一步
+                                    Calibration_InitBandStep();  // 初始化频率标定状态
+                                    Calibration_StartStep(CAL_STEP_BAND);
+                                    InterfaceManager_SwitchTo(INTERFACE_CAL_BAND);
+                                }
+                                return;
+                            }
+                        }
                     }
                     break;
 
                 case CAL_STEP_BAND:
                     {
-                        uint8_t band = g_calibration_state.current_band;
                         // 使用查表方式计算基准功率
                         float base_fwd = Calibration_CalculatePowerFromTable(avg_fwd - g_calibration_data.forward_offset,
                                                                             g_calibration_data.fwd_table,
@@ -1010,36 +1313,51 @@ void Calibration_ProcessSample(void)
                                                                             g_calibration_data.ref_table,
                                                                             g_calibration_data.ref_points);
 
+                        // 计算频率增益修正系数
                         if (base_fwd > 0.0f) {
-                            g_calibration_data.band_gain_fwd[band] = g_calibration_state.target_power / base_fwd;
+                            g_calibration_data.freq_gain_fwd = g_calibration_state.target_power / base_fwd;
                         }
                         if (base_ref > 0.0f) {
-                            g_calibration_data.band_gain_ref[band] = g_calibration_state.target_power / base_ref;
+                            g_calibration_data.freq_gain_ref = g_calibration_state.target_power / base_ref;
                         }
+
+                        // 保存标定频率
+                        g_calibration_data.cal_frequency = g_calibration_state.cal_frequency;
+
+                        // 计算频率微调系数
+                        extern FreqResult_t g_freq_result;
+                        if (g_freq_result.is_valid) {
+                            // 当前测量的原始频率（Hz），使用当前的微调系数
+                            float current_measured_hz = (float)g_freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim;
+                            // 目标频率（Hz）
+                            float target_freq_hz = g_calibration_state.cal_frequency * 1000000.0f;
+                            // 计算新的微调系数：当前微调 × (目标频率 / 当前显示频率)
+                            if (current_measured_hz > 0.0f) {
+                                float correction_factor = target_freq_hz / current_measured_hz;
+                                g_calibration_data.freq_trim = g_calibration_data.freq_trim * correction_factor;
+
+                            }
+                        }
+
                         InterfaceManager_Beep(200);
+
+                        // 延迟显示完成提示
+                        HAL_Delay(1000);  // 显示完成提示1秒
+
+                        // 频率标定完成，保存数据
+                        Calibration_SaveToEEPROM();
+                        if (g_calibration_state.is_single_step) {
+                            // 单步标定完成，返回步骤选择界面
+                            InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
+                        } else {
+                            // 完整标定完成
+                            Calibration_StartStep(CAL_STEP_COMPLETE);
+                            InterfaceManager_SwitchTo(INTERFACE_CAL_COMPLETE);
+                        }
                     }
                     break;
 
-                case CAL_STEP_REFLECT:
-                    {
-                        // 反射通道定标（使用已知SWR负载）
-                        float measured_fwd = Calibration_CalculatePowerFromTable(avg_fwd - g_calibration_data.forward_offset,
-                                                                                g_calibration_data.fwd_table,
-                                                                                g_calibration_data.fwd_points);
-                        float measured_ref_voltage = avg_ref - g_calibration_data.reflected_offset;
 
-                        // 假设使用25Ω负载（理论VSWR=2.0，反射系数=1/3）
-                        float target_ref_power = measured_fwd / 9.0f;  // VSWR=2.0时的反射功率
-
-                        // 更新反射功率校准表的最后一个点
-                        if (g_calibration_data.ref_points > 0) {
-                            uint8_t last_point = g_calibration_data.ref_points - 1;
-                            g_calibration_data.ref_table[last_point].power = target_ref_power;
-                            g_calibration_data.ref_table[last_point].voltage = measured_ref_voltage;
-                        }
-                        InterfaceManager_Beep(200);
-                    }
-                    break;
 
                 default:
                     break;
@@ -1079,24 +1397,33 @@ void Interface_DisplayCalConfirm(void)
  */
 void Interface_DisplayCalZero(void)
 {
+    // 首次进入时清屏，防止残留
+    if (g_interface_manager.interface_first_enter) {
+        g_interface_manager.interface_first_enter = 0;
+        LCD_Clear(BLACK);
+    }
     Show_Str(35, 5, WHITE, BLACK, (uint8_t*)"Zero Cal", 16, 0);
     LCD_DrawLine(0, 25, LCD_W - 1, 25);
 
-    Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 1/5:", 12, 0);
+    Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 1/3:", 12, 0);
     Show_Str(10, 45, WHITE, BLACK, (uint8_t*)"Turn OFF RF", 16, 0);
     Show_Str(10, 65, WHITE, BLACK, (uint8_t*)"No signal input", 12, 0);
 
-    if (g_calibration_state.sample_count > 0) {
-        Show_Str(10, 80, YELLOW, BLACK, (uint8_t*)"Sampling...", 12, 0);
+    if (g_calibration_state.sample_completed) {
+        Show_Str(10, 92, GREEN, BLACK, (uint8_t*)"COMPLETED!      ", 12, 0);
+    } else if (g_calibration_state.sample_count > 0) {
+        Show_Str(10, 92, YELLOW, BLACK, (uint8_t*)"Sampling...     ", 12, 0);
         char progress[16];
-        sprintf(progress, "%d/32 ", g_calibration_state.sample_count);
-        Show_Str(100, 80, YELLOW, BLACK, (uint8_t*)progress, 12, 0);
+        sprintf(progress, "%2d/10 ", g_calibration_state.sample_count);
+        Show_Str(100, 92, YELLOW, BLACK, (uint8_t*)progress, 12, 0);
     } else {
-        Show_Str(10, 80, GREEN, BLACK, (uint8_t*)"Ready to sample", 12, 0);
+        Show_Str(10, 92, GREEN, BLACK, (uint8_t*)"Ready to sample ", 12, 0);
     }
 
     // 显示ADC调试信息
-    Display_ADCInfo(122, 30);
+    Display_ADCInfo(115, 30);
+
+
 
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"OK:Sample UP:Back", 12, 0);
 }
@@ -1111,140 +1438,109 @@ void Interface_DisplayCalPower(void)
     Show_Str(30, 5, WHITE, BLACK, (uint8_t*)"Power Cal", 16, 0);
     LCD_DrawLine(0, 25, LCD_W - 1, 25);
 
-    Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 2/5:", 12, 0);
+    Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 2/3:", 12, 0);
 
     // 显示当前校准通道和点
     if (g_calibration_state.current_channel == 0) {
-        sprintf(str_buffer, "FWD Point %d/20 ", g_calibration_state.current_power_point + 1);
+        sprintf(str_buffer, "FWD Point %2d/20 ", g_calibration_state.current_power_point + 1);
     } else {
-        sprintf(str_buffer, "REF Point %d/20 ", g_calibration_state.current_power_point + 1);
+        sprintf(str_buffer, "REF Point %2d/20 ", g_calibration_state.current_power_point + 1);
     }
     Show_Str(10, 45, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // 显示目标功率，支持kW单位
+    // 显示当前校准点信息
+    const char* channel_name = (g_calibration_state.current_channel == 0) ? "Fwd" : "Ref";
+    sprintf(str_buffer, "Point %2d/20 (%s)  ", g_calibration_state.current_power_point + 1, channel_name);
+    Show_Str(10, 60, CYAN, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    // 显示目标功率，支持kW单位，固定宽度防止残留
     if (g_calibration_state.target_power >= 1000.0f) {
-        sprintf(str_buffer, "Target: %.1fkW", g_calibration_state.target_power / 1000.0f);
+        sprintf(str_buffer, "Target: %4.1fkW  ", g_calibration_state.target_power / 1000.0f);
     } else {
-        sprintf(str_buffer, "Target: %.0fW", g_calibration_state.target_power);
+        sprintf(str_buffer, "Target: %4.0fW   ", g_calibration_state.target_power);
     }
-    Show_Str(10, 60, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
+    Show_Str(10, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
     if (g_calibration_state.is_stable) {
-        Show_Str(10, 75, GREEN, BLACK, (uint8_t*)"STABLE - Ready", 12, 0);
+        Show_Str(10, 90, GREEN, BLACK, (uint8_t*)"STABLE - Ready   ", 12, 0);
     } else {
-        Show_Str(10, 75, YELLOW, BLACK, (uint8_t*)"Set power & wait", 12, 0);
+        Show_Str(10, 90, YELLOW, BLACK, (uint8_t*)"Set power & wait ", 12, 0);
     }
 
-    if (g_calibration_state.sample_count > 0) {
-        Show_Str(10, 90, YELLOW, BLACK, (uint8_t*)"Sampling...", 12, 0);
+    if (g_calibration_state.sample_completed) {
+        Show_Str(10, 103, GREEN, BLACK, (uint8_t*)"COMPLETED!      ", 12, 0);
+    } else if (g_calibration_state.sample_count > 0) {
+        Show_Str(10, 103, YELLOW, BLACK, (uint8_t*)"Sampling...     ", 12, 0);
+        char progress[16];
+        sprintf(progress, "%2d/10 ", g_calibration_state.sample_count);
+        Show_Str(100, 103, YELLOW, BLACK, (uint8_t*)progress, 12, 0);
     }
 
     // 显示ADC调试信息
-    Display_ADCInfo(122, 30);
+    Display_ADCInfo(119, 30);
 
-    Show_Str(5, 105, GRAY, BLACK, (uint8_t*)"DOWN:Next OK:Cal", 12, 0);
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
+    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Prev DOWN:Next OK:Cal", 12, 0);
 }
 
 /**
- * @brief 显示频段增益修正
+ * @brief 显示频率标定
  */
 void Interface_DisplayCalBand(void)
 {
     char str_buffer[32];
 
-    Show_Str(35, 5, WHITE, BLACK, (uint8_t*)"Band Cal", 16, 0);
+    Show_Str(35, 5, WHITE, BLACK, (uint8_t*)"Freq Cal", 16, 0);
     LCD_DrawLine(0, 25, LCD_W - 1, 25);
 
-    Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 3/5:", 12, 0);
+    Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 3/3:", 12, 0);
 
-    // 显示当前频段
-    sprintf(str_buffer, "Band: %s (%.1fMHz)",
-            band_names[g_calibration_state.current_band],
-            band_frequencies[g_calibration_state.current_band]);
+    // 显示标定频率
+    sprintf(str_buffer, "Cal: %5.1f MHz    ", g_calibration_state.cal_frequency);
     Show_Str(10, 45, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // 显示进度
-    sprintf(str_buffer, "Progress: %d/11 ", g_calibration_state.current_band + 1);
-    Show_Str(10, 60, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
+    // 显示实际测量频率（应用16倍补偿和微调）
+    extern FreqResult_t g_freq_result;
+    if (g_freq_result.is_valid) {
+        // 计算真实频率：原始值 × 16倍补偿 × 微调系数
+        float real_freq_hz = (float)g_freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim;
+
+        if (real_freq_hz >= 1000000.0f) {  // >= 1MHz
+            sprintf(str_buffer, "Meas: %5.6f MHz   ", real_freq_hz / 1000000.0f);
+        } else if (real_freq_hz >= 1000.0f) {  // >= 1kHz
+            sprintf(str_buffer, "Meas: %5.3f kHz   ", real_freq_hz / 1000.0f);
+        } else {  // < 1kHz
+            sprintf(str_buffer, "Meas: %5.0f Hz    ", real_freq_hz);
+        }
+    } else {
+        sprintf(str_buffer, "Meas: No Signal   ");
+    }
+    Show_Str(10, 60, CYAN, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+
 
     if (g_calibration_state.is_stable) {
-        Show_Str(10, 75, GREEN, BLACK, (uint8_t*)"STABLE - Ready", 12, 0);
+        Show_Str(10, 75, GREEN, BLACK, (uint8_t*)"STABLE - Ready   ", 12, 0);
     } else {
-        Show_Str(10, 75, YELLOW, BLACK, (uint8_t*)"Set freq & power", 12, 0);
+        Show_Str(10, 75, YELLOW, BLACK, (uint8_t*)"Set freq & power ", 12, 0);
     }
 
-    if (g_calibration_state.sample_count > 0) {
-        Show_Str(10, 90, YELLOW, BLACK, (uint8_t*)"Sampling...", 12, 0);
+    if (g_calibration_state.sample_completed) {
+        Show_Str(10, 88, GREEN, BLACK, (uint8_t*)"COMPLETED!      ", 12, 0);
+    } else if (g_calibration_state.sample_count > 0) {
+        Show_Str(10, 88, YELLOW, BLACK, (uint8_t*)"Sampling...     ", 12, 0);
+        char progress[16];
+        sprintf(progress, "%2d/10 ", g_calibration_state.sample_count);
+        Show_Str(100, 88, YELLOW, BLACK, (uint8_t*)progress, 12, 0);
     }
 
     // 显示ADC调试信息
-    Display_ADCInfo(122, 30);
+    //Display_ADCInfo(122, 30);
 
-    Show_Str(5, 105, GRAY, BLACK, (uint8_t*)"DOWN:Next OK:Cal", 12, 0);
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
+    Show_Str(5, 103, GRAY, BLACK, (uint8_t*)"DOWN:Freq(1-50MHz)   ", 12, 0);
+    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"OK:Cal UP:Back       ", 12, 0);
 }
 
-/**
- * @brief 显示反射通道定标
- */
-void Interface_DisplayCalReflect(void)
-{
-    Show_Str(25, 5, WHITE, BLACK, (uint8_t*)"Reflect Cal", 16, 0);
-    LCD_DrawLine(0, 25, LCD_W - 1, 25);
 
-    Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 4/5:", 12, 0);
-    Show_Str(10, 45, WHITE, BLACK, (uint8_t*)"Connect 25ohm", 12, 0);
-    Show_Str(10, 60, WHITE, BLACK, (uint8_t*)"(SWR=2.0 std)", 12, 0);
-
-    if (g_calibration_state.is_stable) {
-        Show_Str(10, 75, GREEN, BLACK, (uint8_t*)"STABLE - Ready", 12, 0);
-    } else {
-        Show_Str(10, 75, YELLOW, BLACK, (uint8_t*)"Waiting stable..", 12, 0);
-    }
-
-    if (g_calibration_state.sample_count > 0) {
-        Show_Str(10, 90, YELLOW, BLACK, (uint8_t*)"Sampling...", 12, 0);
-    }
-
-    // 显示ADC调试信息
-    Display_ADCInfo(122, 30);
-
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"OK:Cal UP:Back", 12, 0);
-}
-
-/**
- * @brief 显示频率计微调
- */
-void Interface_DisplayCalFreq(void)
-{
-    char str_buffer[32];
-
-    Show_Str(30, 5, WHITE, BLACK, (uint8_t*)"Freq Cal", 16, 0);
-    LCD_DrawLine(0, 25, LCD_W - 1, 25);
-
-    Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 5/5:", 12, 0);
-    Show_Str(10, 45, WHITE, BLACK, (uint8_t*)"Input 10.000MHz", 12, 0);
-
-    // 显示当前频率读数
-    FreqResult_t freq_result;
-    if (FreqCounter_GetResult(&freq_result) == 0) {
-        sprintf(str_buffer, "Read: %.3fMHz", freq_result.frequency_display);
-        Show_Str(10, 60, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
-    } else {
-        Show_Str(10, 60, GRAY, BLACK, (uint8_t*)"Read: -- MHz", 12, 0);
-    }
-
-    // 显示微调系数
-    sprintf(str_buffer, "Trim: %.6f", g_calibration_data.freq_trim);
-    Show_Str(10, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
-
-    // 显示ADC调试信息
-    Display_ADCInfo(122, 30);
-
-    Show_Str(5, 105, GRAY, BLACK, (uint8_t*)"DOWN:Adj OK:Save", 12, 0);
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
-}
 
 /**
  * @brief 显示校准完成
@@ -1281,20 +1577,18 @@ void Interface_DisplayMain(void)
     // 左侧显示功率信息
     Show_Str(5, 30, CYAN, BLACK, (uint8_t*)"Forward:", 12, 0); //正向功率标签
     if (g_power_result.is_valid) {
-        sprintf(str_buffer, "%.2f %s", g_power_result.forward_power,
-                g_power_result.forward_unit == POWER_UNIT_KW ? "kW" : "W");
+        sprintf(str_buffer, "%5.0fW", g_power_result.forward_power);
         Show_Str(5, 45, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //正向功率数值
     } else {
-        Show_Str(5, 45, GRAY, BLACK, (uint8_t*)"-- W", 12, 0); //正向功率无效显示
+        Show_Str(5, 45, GRAY, BLACK, (uint8_t*)"   --W", 12, 0); //正向功率无效显示
     }
 
     Show_Str(5, 60, CYAN, BLACK, (uint8_t*)"Reflect:", 12, 0); //反射功率标签
     if (g_power_result.is_valid) {
-        sprintf(str_buffer, "%.2f %s", g_power_result.reflected_power,
-                g_power_result.reflected_unit == POWER_UNIT_KW ? "kW" : "W");
+        sprintf(str_buffer, "%5.0fW", g_power_result.reflected_power);
         Show_Str(5, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //反射功率数值
     } else {
-        Show_Str(5, 75, GRAY, BLACK, (uint8_t*)"-- W", 12, 0); //反射功率无效显示
+        Show_Str(5, 75, GRAY, BLACK, (uint8_t*)"   --W", 12, 0); //反射功率无效显示
     }
 
     // 右侧显示射频参数
@@ -1307,18 +1601,34 @@ void Interface_DisplayMain(void)
             case VSWR_COLOR_RED:    vswr_color = RED; break;
             default:                vswr_color = WHITE; break;
         }
-        sprintf(str_buffer, "%.2f", g_rf_params.vswr);
+
+        // 先清空显示区域
+        //Show_Str(85, 45, BLACK, BLACK, (uint8_t*)"      ", 12, 0);
+
+        // 特殊处理无穷大情况，添加滞回防止闪烁
+        static uint8_t vswr_is_inf = 0;
+        if (g_rf_params.vswr >= 999.0f) {
+            vswr_is_inf = 1;  // 设置无穷大标志
+        } else if (g_rf_params.vswr <= 50.0f) {
+            vswr_is_inf = 0;  // 只有当VSWR降到50以下才清除标志
+        }
+
+        if (vswr_is_inf) {
+            sprintf(str_buffer, "%6s", "INF");  // 显示无穷大，固定宽度
+        } else {
+            sprintf(str_buffer, "%6.2f", g_rf_params.vswr);  // 固定宽度6字符
+        }
         Show_Str(85, 45, vswr_color, BLACK, (uint8_t*)str_buffer, 12, 0); //驻波比数值(带颜色)
     } else {
-        Show_Str(85, 45, GRAY, BLACK, (uint8_t*)"--", 12, 0); //驻波比无效显示
+        Show_Str(85, 45, GRAY, BLACK, (uint8_t*)"    --", 12, 0); //驻波比无效显示
     }
 
     Show_Str(85, 60, CYAN, BLACK, (uint8_t*)"Refl.Coef:", 12, 0); //反射系数标签
     if (g_rf_params.is_valid) {
-        sprintf(str_buffer, "%.3f", g_rf_params.reflection_coeff);
+        sprintf(str_buffer, "%5.3f", g_rf_params.reflection_coeff);
         Show_Str(85, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //反射系数数值
     } else {
-        Show_Str(85, 75, GRAY, BLACK, (uint8_t*)"--", 12, 0); //反射系数无效显示
+        Show_Str(85, 75, GRAY, BLACK, (uint8_t*)"   --", 12, 0); //反射系数无效显示
     }
 
     // 底部显示传输效率和频率
@@ -1326,24 +1636,29 @@ void Interface_DisplayMain(void)
 
     Show_Str(5, 100, CYAN, BLACK, (uint8_t*)"Efficiency:", 12, 0); //传输效率标签
     if (g_rf_params.is_valid) {
-        sprintf(str_buffer, "%.1f%%", g_rf_params.transmission_eff);
+        sprintf(str_buffer, "%5.1f%%", g_rf_params.transmission_eff);
         Show_Str(70, 100, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //传输效率数值
     } else {
-        Show_Str(70, 100, GRAY, BLACK, (uint8_t*)"--%", 12, 0); //传输效率无效显示
+        Show_Str(70, 100, GRAY, BLACK, (uint8_t*)"   --%", 12, 0); //传输效率无效显示
     }
 
     Show_Str(5, 115, CYAN, BLACK, (uint8_t*)"Freq:", 12, 0); //频率标签
     FreqResult_t freq_result;
     if (FreqCounter_GetResult(&freq_result) == 0) {
-        sprintf(str_buffer, "%.2f %s", freq_result.frequency_display*16,
-                FreqCounter_GetUnitString(freq_result.unit));
+        // 使用原始frequency_hz值，应用16倍补偿和频率微调
+        float freq_hz = (float)freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim;  // 实际频率(Hz)
+
+        if (freq_hz >= 1000000.0f) {  // >= 1MHz
+            sprintf(str_buffer, "%4.6f MHz  ", freq_hz / 1000000.0f);
+        } else if (freq_hz >= 1000.0f) {  // >= 1kHz，显示为kHz，3位小数
+            sprintf(str_buffer, "%4.3f kHz    ", freq_hz / 1000.0f);
+        } else {  // < 1kHz
+            sprintf(str_buffer, "%4.0f Hz     ", freq_hz);
+        }
         Show_Str(40, 115, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //频率数值
     } else {
-        Show_Str(40, 115, GRAY, BLACK, (uint8_t*)"-- Hz", 12, 0); //频率无效显示
+        Show_Str(40, 115, GRAY, BLACK, (uint8_t*)"      -- Hz", 12, 0); //频率无效显示
     }
-
-    // 显示操作提示
-    Show_Str(110, 115, GRAY, BLACK, (uint8_t*)"OK:Menu", 12, 0); //操作提示
 }
 
 /**
@@ -1400,19 +1715,133 @@ void Interface_DisplayCalibration(void)
 }
 
 /**
+ * @brief 标定步骤选择界面显示
+ */
+void Interface_DisplayCalStepSelect(void)
+{
+    // 首次进入时清屏，防止残留
+    if (g_interface_manager.interface_first_enter) {
+        g_interface_manager.interface_first_enter = 0;
+        LCD_Clear(BLACK);
+    }
+
+    Show_Str(25, 5, WHITE, BLACK, (uint8_t*)"Cal Select", 16, 0);
+    LCD_DrawLine(0, 25, LCD_W - 1, 25);
+
+    // 显示选项，当前选中项高亮显示
+    uint16_t sel_color = GREEN;
+    uint16_t normal_color = WHITE;
+
+    Show_Str(10, 35, (g_calibration_state.selected_step == 0) ? sel_color : normal_color,
+             BLACK, (uint8_t*)"0. Full Cal", 12, 0);
+    Show_Str(10, 50, (g_calibration_state.selected_step == 1) ? sel_color : normal_color,
+             BLACK, (uint8_t*)"1. Zero Cal", 12, 0);
+    Show_Str(10, 65, (g_calibration_state.selected_step == 2) ? sel_color : normal_color,
+             BLACK, (uint8_t*)"2. Power Cal", 12, 0);
+    Show_Str(10, 80, (g_calibration_state.selected_step == 3) ? sel_color : normal_color,
+             BLACK, (uint8_t*)"3. Freq Cal", 12, 0);
+
+    // 显示当前标定状态
+    Show_Str(10, 100, CYAN, BLACK, (uint8_t*)"Status:", 12, 0);
+    if (g_calibration_data.is_calibrated) {
+        Show_Str(60, 100, GREEN, BLACK, (uint8_t*)"CALIBRATED", 12, 0);
+    } else {
+        Show_Str(60, 100, RED, BLACK, (uint8_t*)"NOT CAL", 12, 0);
+    }
+
+    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back DOWN:Sel OK:Start", 12, 0);
+}
+
+/**
  * @brief 标定界面显示
  */
 void Interface_DisplayStandard(void)
 {
-    Show_Str(50, 5, WHITE, BLACK, (uint8_t*)"Settings", 16, 0); //标定设置标题
+    char str_buffer[32];
+
+    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Cal Debug", 16, 0); //校准调试标题
     LCD_DrawLine(0, 25, LCD_W - 1, 25); //标题分割线
 
-    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"Power Cal:", 16, 0); //功率校准标签
-    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"Forward Slope: 1.00", 12, 0); //正向功率斜率
-    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"Reflect Slope: 1.00", 12, 0); //反射功率斜率
-    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"Zero Offset: 0.00V", 12, 0); //零点偏移
+    // 获取当前ADC值和电压进行实时调试
+    extern ADC_HandleTypeDef hadc1;
+    ADC_ChannelConfTypeDef sConfig = {0};
+    sConfig.Channel = ADC_CHANNEL_2;
+    sConfig.Rank = ADC_REGULAR_RANK_1;
+    sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+    HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+    HAL_ADC_Start(&hadc1);
+    HAL_ADC_PollForConversion(&hadc1, 10);
+    uint32_t adc_fwd = HAL_ADC_GetValue(&hadc1);
+    HAL_ADC_Stop(&hadc1);
 
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0); //返回提示
+    float raw_voltage = (float)adc_fwd * 2.5f / 4095.0f;
+    float corrected_voltage = raw_voltage - g_calibration_data.forward_offset;
+    if (corrected_voltage < 0.0f) corrected_voltage = 0.0f;
+
+    // 串口调试输出
+    printf("\r\n=== Calibration Debug Info ===\r\n");
+    printf("ADC Raw Value: %d\r\n", (int)adc_fwd);
+    printf("Raw Voltage: %.3fV\r\n", raw_voltage);
+    printf("Forward Offset: %.3fV\r\n", g_calibration_data.forward_offset);
+    printf("Corrected Voltage: %.3fV\r\n", corrected_voltage);
+    printf("Is Calibrated: %s\r\n", g_calibration_data.is_calibrated ? "YES" : "NO");
+    printf("Forward Points: %d/20\r\n", g_calibration_data.fwd_points);
+    printf("Reflected Points: %d/20\r\n", g_calibration_data.ref_points);
+
+    // 显示查表结果和校准点信息
+    if (g_calibration_data.fwd_points > 0) {
+        float table_power = Calibration_CalculatePowerFromTable(corrected_voltage, g_calibration_data.fwd_table, g_calibration_data.fwd_points);
+        printf("Table Lookup Result: %.0fW\r\n", table_power);
+
+        // 显示前几个校准点
+        printf("Calibration Points (First 5):\r\n");
+        for (int i = 0; i < 5 && i < g_calibration_data.fwd_points; i++) {
+            printf("  P%d: %.0fW @ %.3fV\r\n", i, g_calibration_data.fwd_table[i].power, g_calibration_data.fwd_table[i].voltage);
+        }
+
+        // 显示最后几个校准点
+        if (g_calibration_data.fwd_points > 5) {
+            printf("Calibration Points (Last 5):\r\n");
+            int start = (g_calibration_data.fwd_points > 5) ? g_calibration_data.fwd_points - 5 : 0;
+            for (int i = start; i < g_calibration_data.fwd_points; i++) {
+                printf("  P%d: %.0fW @ %.3fV\r\n", i, g_calibration_data.fwd_table[i].power, g_calibration_data.fwd_table[i].voltage);
+            }
+        }
+
+        // 查找1.0V附近的校准点
+        printf("Points near 1.0V:\r\n");
+        for (int i = 0; i < g_calibration_data.fwd_points; i++) {
+            if (g_calibration_data.fwd_table[i].voltage >= 0.8f && g_calibration_data.fwd_table[i].voltage <= 1.2f) {
+                printf("  P%d: %.0fW @ %.3fV (MATCH!)\r\n", i, g_calibration_data.fwd_table[i].power, g_calibration_data.fwd_table[i].voltage);
+            }
+        }
+    } else {
+        printf("No calibration data found!\r\n");
+    }
+    printf("==============================\r\n\r\n");
+
+    // 显示实时调试信息到屏幕
+    sprintf(str_buffer, "ADC:%4d Raw:%4.3f", (int)adc_fwd, raw_voltage);
+    Show_Str(10, 30, CYAN, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    sprintf(str_buffer, "Off:%4.3f Cor:%4.3f", g_calibration_data.forward_offset, corrected_voltage);
+    Show_Str(10, 45, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    sprintf(str_buffer, "Cal:%c Pts:%2d/20", g_calibration_data.is_calibrated ? 'Y' : 'N', g_calibration_data.fwd_points);
+    Show_Str(10, 60, g_calibration_data.is_calibrated ? GREEN : RED, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    if (g_calibration_data.fwd_points > 0) {
+        float table_power = Calibration_CalculatePowerFromTable(corrected_voltage, g_calibration_data.fwd_table, g_calibration_data.fwd_points);
+        sprintf(str_buffer, "Result:%5.0fW", table_power);
+        Show_Str(10, 75, YELLOW, BLACK, (uint8_t*)str_buffer, 12, 0);
+    } else {
+        Show_Str(10, 75, GRAY, BLACK, (uint8_t*)"Result: No Cal", 12, 0);
+    }
+
+    Show_Str(10, 90, WHITE, BLACK, (uint8_t*)"Check Serial Output", 12, 0);
+    Show_Str(10, 105, WHITE, BLACK, (uint8_t*)"for detailed info", 12, 0);
+
+    Show_Str(10, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0); //返回提示
 }
 
 /**
@@ -1433,22 +1862,56 @@ void Interface_DisplayAlarm(void)
     } else {
         Show_Str(5, 55, BLACK, BLACK, (uint8_t*)" ", 12, 0); //清除指示符
     }
-    sprintf(str_buffer, "Alarm Enable: %s", g_interface_manager.alarm_enabled ? "ON " : "OFF");
+    sprintf(str_buffer, "Alarm Enable: %3s", g_interface_manager.alarm_enabled ? "ON" : "OFF");
     Show_Str(15, 55, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //报警使能状态
 
-    // 显示VSWR阈值（带选中指示）
-    if (g_interface_manager.alarm_selected_item == 1) {
-        Show_Str(5, 70, GREEN, BLACK, (uint8_t*)">", 12, 0); //选中指示符
+    // 显示VSWR阈值（四位数编辑模式）
+    // 显示VSWR选中指示符
+    if (g_interface_manager.alarm_selected_item >= 1 && g_interface_manager.alarm_selected_item <= 4) {
+        Show_Str(5, 70, GREEN, BLACK, (uint8_t*)">", 12, 0); //VSWR选中指示符
     } else {
         Show_Str(5, 70, BLACK, BLACK, (uint8_t*)" ", 12, 0); //清除指示符
     }
-    sprintf(str_buffer, "VSWR Limit: %.1f", g_interface_manager.vswr_alarm_threshold);
-    Show_Str(15, 70, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //驻波比报警阈值
+
+    Show_Str(15, 70, WHITE, BLACK, (uint8_t*)"VSWR Limit: ", 12, 0);
+
+    // 分解VSWR值为各个位数（修复浮点精度问题）
+    float current_value = g_interface_manager.vswr_alarm_threshold;
+    // 转换为整数避免浮点精度问题
+    int total_tenths = (int)(current_value * 10.0f + 0.5f);  // 四舍五入到0.1
+
+    int hundreds = (total_tenths / 1000) % 10;
+    int tens = (total_tenths / 100) % 10;
+    int ones = (total_tenths / 10) % 10;
+    int decimal = total_tenths % 10;
+
+    // 显示百位（带选中指示）
+    uint16_t color_h = (g_interface_manager.alarm_selected_item == 1) ? GREEN : WHITE;
+    sprintf(str_buffer, "%d", hundreds);
+    Show_Str(106, 70, color_h, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    // 显示十位（带选中指示）
+    uint16_t color_t = (g_interface_manager.alarm_selected_item == 2) ? GREEN : WHITE;
+    sprintf(str_buffer, "%d", tens);
+    Show_Str(112, 70, color_t, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    // 显示个位（带选中指示）
+    uint16_t color_o = (g_interface_manager.alarm_selected_item == 3) ? GREEN : WHITE;
+    sprintf(str_buffer, "%d", ones);
+    Show_Str(118, 70, color_o, BLACK, (uint8_t*)str_buffer, 12, 0);
+
+    // 显示小数点
+    Show_Str(124, 70, WHITE, BLACK, (uint8_t*)".", 12, 0);
+
+    // 显示小数位（带选中指示）
+    uint16_t color_d = (g_interface_manager.alarm_selected_item == 4) ? GREEN : WHITE;
+    sprintf(str_buffer, "%d", decimal);
+    Show_Str(128, 70, color_d, BLACK, (uint8_t*)str_buffer, 12, 0);
 
     Show_Str(10, 85, YELLOW, BLACK, (uint8_t*)"Buzzer when exceed", 12, 0); //超限蜂鸣器提示
 
     Show_Str(5, 100, GRAY, BLACK, (uint8_t*)"DOWN:Switch OK:Edit", 12, 0); //操作提示
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0); //返回提示
+    Show_Str(10, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0); //返回提示
 }
 
 /**
@@ -1480,7 +1943,7 @@ void Interface_DisplayBrightness(void)
     }
 
     Show_Str(10, 95, YELLOW, BLACK, (uint8_t*)"DN:Add OK:Confirm", 12, 0); //操作提示
-    Show_Str(5, 115, YELLOW, BLACK, (uint8_t*)"UP:Back", 12, 0); //返回提示
+    Show_Str(10, 115, YELLOW, BLACK, (uint8_t*)"UP:Back", 12, 0); //返回提示
     
 }
 
@@ -1495,7 +1958,7 @@ void Interface_DisplayAbout(void)
     Show_Str(0, 35, CYAN, BLACK, (uint8_t*)"RF Power Meter V1.0", 16, 0);//版本
     Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"Freq: 1Hz-100MHz", 12, 0);//频率
     Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"Power: 0W-2kW", 12, 0);//功率范围更新
-    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"VSWR: 1.0-10.0", 12, 0);//驻波比
+    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"VSWR: 1.0-999.0", 12, 0);//驻波比
     Show_Str(10, 100, WHITE, BLACK, (uint8_t*)"Author: XUN YU TEK", 12, 0);//作者
 
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
@@ -1519,7 +1982,7 @@ void System_BootSequence(void)
 
     // 初始进度显示 (0-10%)
     for (i = 0; i <= 10; i++) {
-        sprintf(progress_str, "%d%%", i);
+        sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);  // 移动到原进度条位置
         HAL_Delay(50);
     }
@@ -1529,7 +1992,7 @@ void System_BootSequence(void)
 
     // 进度显示 (10-30%)
     for (i = 10; i <= 30; i++) {
-        sprintf(progress_str, "%d%%", i);
+        sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0); //进度百分比显示
         HAL_Delay(30);
     }
@@ -1542,7 +2005,7 @@ void System_BootSequence(void)
             HAL_Delay(1000);  // 停止运行，不喂狗让系统复位
         }
     }
-    Show_Str(130, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0); //步骤1完成标记
+    Show_Str(120, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0); //步骤1完成标记
     HAL_IWDG_Refresh(&hiwdg);  // 步骤1完成后喂狗
 
     // 步骤2：频率计启动
@@ -1550,7 +2013,7 @@ void System_BootSequence(void)
 
     // 进度显示 (30-50%)
     for (i = 30; i <= 50; i++) {
-        sprintf(progress_str, "%d%%", i);
+        sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
         HAL_Delay(30);
     }
@@ -1563,7 +2026,7 @@ void System_BootSequence(void)
             HAL_Delay(1000);  // 停止运行，不喂狗让系统复位
         }
     }
-    Show_Str(130, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0);
+    Show_Str(135, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // 修复：向右移动避免重叠
     HAL_IWDG_Refresh(&hiwdg);  // 步骤2完成后喂狗
 
     // 步骤3：界面管理器初始化
@@ -1571,7 +2034,7 @@ void System_BootSequence(void)
 
     // 进度显示 (50-70%)
     for (i = 50; i <= 70; i++) {
-        sprintf(progress_str, "%d%%", i);
+        sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
         HAL_Delay(30);
     }
@@ -1584,7 +2047,7 @@ void System_BootSequence(void)
             HAL_Delay(1000);  // 停止运行，不喂狗让系统复位
         }
     }
-    Show_Str(130, 110, GREEN, BLACK, (uint8_t*)"OK", 12, 0);
+    Show_Str(135, 110, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // 修复：向右移动避免重叠
     HAL_IWDG_Refresh(&hiwdg);  // 步骤3完成后喂狗
     HAL_Delay(300);
 
@@ -1598,32 +2061,32 @@ void System_BootSequence(void)
     Show_Str(30, 30, WHITE, BLACK, (uint8_t*)"System Boot", 16, 0);
 
     // 恢复之前的进度 (70%)
-    sprintf(progress_str, "%d%%", 70);
+    sprintf(progress_str, "%3d%%", 70);
     Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
 
     Show_Str(20, 80, YELLOW, BLACK, (uint8_t*)"PWM Backlight", 12, 0);
 
     // 进度显示 (70-85%)
     for (i = 70; i <= 85; i++) {
-        sprintf(progress_str, "%d%%", i);
+        sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
         HAL_Delay(30);
     }
 
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-    Show_Str(130, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0);
+    Show_Str(135, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // 修复：向右移动避免重叠
 
     // 步骤5：系统就绪
     Show_Str(20, 95, YELLOW, BLACK, (uint8_t*)"System Ready", 12, 0);
 
     // 进度显示 (85-100%)
     for (i = 85; i <= 100; i++) {
-        sprintf(progress_str, "%d%%", i);
+        sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
         HAL_Delay(25);
     }
 
-    Show_Str(130, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0);
+    Show_Str(135, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // 修复：向右移动避免重叠
     HAL_IWDG_Refresh(&hiwdg);  // 启动序列完成后最后一次喂狗
 
     // 显示完成信息

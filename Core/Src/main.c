@@ -57,6 +57,9 @@
 // 外部变量声明
 extern PowerResult_t g_power_result;
 extern RFParams_t g_rf_params;
+
+// ADC DMA缓冲区，存储两个通道的转换结果
+uint16_t adc_dma_buffer[2];  // [0]=PA2正向功率, [1]=PA3反射功率
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -79,6 +82,7 @@ void ProcessRFParameters(void);         // 处理射频参数计算
   */
 int main(void)
 {
+
   /* USER CODE BEGIN 1 */
 
   /* USER CODE END 1 */
@@ -124,6 +128,9 @@ int main(void)
 
   // 启动完成后第一次喂狗
   HAL_IWDG_Refresh(&hiwdg);
+
+  // ADC校准（STM32F1必需）
+  HAL_ADCEx_Calibration_Start(&hadc1);
 
   /* USER CODE END 2 */
 
@@ -223,26 +230,56 @@ void ProcessPowerMeasurement(void)
     if (current_time - last_adc_time >= 100) {
         last_adc_time = current_time;
 
-        // 启动ADC转换
+        // ADC滑动平均滤波缓冲区
+        static uint32_t forward_buffer[20] = {0};
+        static uint32_t reflected_buffer[20] = {0};
+        static uint8_t buffer_index = 0;
+
+        // 配置并读取Channel 2 (PA2正向功率)
+        ADC_ChannelConfTypeDef sConfig = {0};
+        sConfig.Channel = ADC_CHANNEL_2;
+        sConfig.Rank = ADC_REGULAR_RANK_1;
+        sConfig.SamplingTime = ADC_SAMPLETIME_1CYCLE_5;
+        HAL_ADC_ConfigChannel(&hadc1, &sConfig);
+
         HAL_ADC_Start(&hadc1);
-
-        // 读取PA2 (正向功率)
         HAL_ADC_PollForConversion(&hadc1, 10);
-        uint32_t adc_forward = HAL_ADC_GetValue(&hadc1);
-
-        // 读取PA3 (反射功率)
-        HAL_ADC_PollForConversion(&hadc1, 10);
-        uint32_t adc_reflected = HAL_ADC_GetValue(&hadc1);
-
+        uint32_t new_forward = HAL_ADC_GetValue(&hadc1);
         HAL_ADC_Stop(&hadc1);
 
-        // 转换为电压值 (3.3V参考电压，12位ADC)
-        float forward_voltage = (float)adc_forward * 3.3f / 4095.0f;
-        float reflected_voltage = (float)adc_reflected * 3.3f / 4095.0f;
+        // 配置并读取Channel 3 (PA3反射功率)
+        sConfig.Channel = ADC_CHANNEL_3;
+        HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
-        // 转换为功率值 (根据你的硬件标定，这里是示例公式)
-        float forward_power = forward_voltage * 10.0f;    // 示例：10W/V
-        float reflected_power = reflected_voltage * 10.0f;
+        HAL_ADC_Start(&hadc1);
+        HAL_ADC_PollForConversion(&hadc1, 10);
+        uint32_t new_reflected = HAL_ADC_GetValue(&hadc1);
+        HAL_ADC_Stop(&hadc1);
+
+        // 更新滑动平均缓冲区
+        forward_buffer[buffer_index] = new_forward;
+        reflected_buffer[buffer_index] = new_reflected;
+        buffer_index = (buffer_index + 1) % 20;  // 循环索引
+
+        // 计算滑动平均值
+        uint32_t forward_sum = 0;
+        uint32_t reflected_sum = 0;
+        for (int i = 0; i < 20; i++) {
+            forward_sum += forward_buffer[i];
+            reflected_sum += reflected_buffer[i];
+        }
+        uint32_t adc_forward = forward_sum / 20;
+        uint32_t adc_reflected = reflected_sum / 20;
+
+        // 转换为电压值 (2.5V参考电压，12位ADC)
+        float forward_voltage = (float)adc_forward * 2.5f / 4095.0f;
+        float reflected_voltage = (float)adc_reflected * 2.5f / 4095.0f;
+
+        // 使用标定系统计算功率
+        float forward_power = Calibration_CalculatePower(forward_voltage, 1);   // 1=正向
+        float reflected_power = Calibration_CalculatePower(reflected_voltage, 0); // 0=反射
+
+
 
         // 更新功率数据到界面管理器
         InterfaceManager_UpdatePower(forward_power, reflected_power);
@@ -266,10 +303,19 @@ void ProcessRFParameters(void)
             // 计算反射系数 Γ = √(Pr/Pi)
             float reflection_coeff = sqrtf(g_power_result.reflected_power / g_power_result.forward_power);
 
+            // 限制反射系数范围 (理论上应该 ≤ 1.0，但允许接反的情况)
+            if (reflection_coeff > 1.0f) reflection_coeff = 1.0f;
+
             // 计算驻波比 VSWR = (1 + |Γ|) / (1 - |Γ|)
-            float vswr = (1.0f + reflection_coeff) / (1.0f - reflection_coeff);
-            if (vswr < 1.0f) vswr = 1.0f;  // VSWR最小值为1
-            if (vswr > 10.0f) vswr = 10.0f; // 限制最大值
+            float vswr;
+            if (reflection_coeff >= 0.99f) {
+                // 接近开路状态，VSWR接近无穷大
+                vswr = 999.9f;  // 显示为无穷大的近似值
+            } else {
+                vswr = (1.0f + reflection_coeff) / (1.0f - reflection_coeff);
+                if (vswr < 1.0f) vswr = 1.0f;  // VSWR最小值为1
+                if (vswr > 999.9f) vswr = 999.9f; // 限制最大显示值
+            }
 
             // 计算传输效率 η = 1 - Pr/Pi
             float transmission_eff = (1.0f - g_power_result.reflected_power / g_power_result.forward_power) * 100.0f;
@@ -280,6 +326,15 @@ void ProcessRFParameters(void)
             InterfaceManager_UpdateRFParams(vswr, reflection_coeff, transmission_eff);
         }
     }
+}
+
+/**
+ * @brief 重定向printf到UART1
+ */
+int fputc(int ch, FILE *f)
+{
+    HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 1000);
+    return ch;
 }
 
 /* USER CODE END 4 */
@@ -298,8 +353,7 @@ void Error_Handler(void)
   }
   /* USER CODE END Error_Handler_Debug */
 }
-
-#ifdef  USE_FULL_ASSERT
+#ifdef USE_FULL_ASSERT
 /**
   * @brief  Reports the name of the source file and the source line number
   *         where the assert_param error has occurred.

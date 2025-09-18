@@ -54,7 +54,7 @@
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-// æŒ‰é”®æ£€æµ‹å…¨å±€å˜é‡
+// °´¼ü¼ì²âÈ«¾Ö±äÁ¿
 uint8_t g_key_pressed_flag = 0;
 uint8_t g_current_key_value = 0;
 
@@ -310,76 +310,92 @@ void USART1_IRQHandler(void)
 
 /* USER CODE BEGIN 1 */
 
-// å¤–éƒ¨æŒ‰é”®å˜é‡å£°æ˜
+// Íâ²¿°´¼ü±äÁ¿ÉùÃ÷
 extern uint8_t g_key_pressed_flag;
 extern uint8_t g_current_key_value;
 
 /**
- * @brief è·å–æŒ‰é”®å€¼
- * @return æŒ‰é”®å€¼ï¼š0=æ— æŒ‰é”®, 1=UP, 2=DOWN, 3=OK
+ * @brief »ñÈ¡°´¼üÖµ
+ * @return °´¼üÖµ£º0=ÎŞ°´¼ü, 1=UP, 2=DOWN, 3=OK
  */
 uint8_t GetKeyValue(void)
 {
-  // ä»TIM3ä¸­æ–­è·å–æŒ‰é”®çŠ¶æ€
+  // ´ÓTIM3ÖĞ¶Ï»ñÈ¡°´¼ü×´Ì¬
   if (g_key_pressed_flag) {
-    g_key_pressed_flag = 0;  // æ¸…é™¤æ ‡å¿—
+    g_key_pressed_flag = 0;  // Çå³ı±êÖ¾
     return g_current_key_value;
   }
-  return 0;  // æ— æŒ‰é”®
+  return 0;  // ÎŞ°´¼ü
 }
 /**
- * @brief TIMä¸­æ–­å‘¨æœŸå›è°ƒå‡½æ•°
- * @param htim: å®šæ—¶å™¨å¥æŸ„æŒ‡é’ˆ
- * @retval æ— 
+ * @brief TIMÖĞ¶ÏÖÜÆÚ»Øµ÷º¯Êı
+ * @param htim: ¶¨Ê±Æ÷¾ä±úÖ¸Õë
+ * @retval ÎŞ
  */
 void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 {
-  // TIM4ä¸­æ–­å›è°ƒ (1ç§’å®šæ—¶)
+  // TIM4ÖĞ¶Ï»Øµ÷ (1Ãë¶¨Ê±)
   if (htim->Instance == TIM4) {
     FreqCounter_TIM4_Callback(htim);
   }
 
-  // TIM2æº¢å‡ºä¸­æ–­å›è°ƒ
+  // TIM2Òç³öÖĞ¶Ï»Øµ÷
   if (htim->Instance == TIM2) {
     FreqCounter_TIM2_Callback(htim);
   }
 
-  // TIM3ä¸­æ–­å›è°ƒ (æŒ‰é”®æ‰«æå’Œèœ‚é¸£å™¨å¤„ç†)
+  // TIM3ÖĞ¶Ï»Øµ÷ (°´¼üÉ¨ÃèºÍ·äÃùÆ÷´¦Àí)
   if (htim->Instance == TIM3) {
     static uint8_t key_count = 0;
     static uint8_t key_debounce_count = 0;
     static uint8_t last_key_state = 0;
+    static uint16_t key_hold_count = 0;  // °´¼ü³ÖĞøÊ±¼ä¼ÆÊı
 
-    // èœ‚é¸£å™¨å¤„ç†ï¼ˆç°åœ¨æ¯5msè°ƒç”¨ä¸€æ¬¡ï¼Œ200Hzï¼‰
+    // ·äÃùÆ÷´¦Àí£¨ÏÖÔÚÃ¿5msµ÷ÓÃÒ»´Î£¬200Hz£©
     InterfaceManager_BuzzerProcess();
 
     key_count++;
-    if (key_count >= 4) {  // 4*5ms = 20msæ‰«æ
+    if (key_count >= 4) {  // 4*5ms = 20msÉ¨Ãè
       key_count = 0;
 
-      // è¯»å–æŒ‰é”®çŠ¶æ€
-      uint8_t key_state = 0;  // 0=æ— æŒ‰é”®
+      // ¶ÁÈ¡°´¼ü×´Ì¬
+      uint8_t key_state = 0;  // 0=ÎŞ°´¼ü
       if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET) {
-        key_state = 1;  // UPé”®
+        key_state = 1;  // UP¼ü
       } else if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_13) == GPIO_PIN_RESET) {
-        key_state = 3;  // OKé”®
+        key_state = 3;  // OK¼ü
       } else if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14) == GPIO_PIN_RESET) {
-        key_state = 2;  // DOWNé”®
+        key_state = 2;  // DOWN¼ü
       }
 
-      // æŒ‰é”®é˜²æŠ–å¤„ç†
+      // °´¼ü·À¶¶´¦Àí
       if (key_state == last_key_state) {
-        if (key_state != 0 && key_debounce_count == 0) {
-          // æŒ‰é”®æŒ‰ä¸‹ä¸”æœªå¤„ç†è¿‡ï¼Œè®¾ç½®æ ‡å¿—
-          g_key_pressed_flag = 1;
-          g_current_key_value = key_state;
-          key_debounce_count = 1;  // å¼€å§‹é˜²æŠ–è®¡æ•°
-        } else if (key_state == 0) {
-          key_debounce_count = 0;  // æŒ‰é”®é‡Šæ”¾ï¼Œæ¸…é™¤é˜²æŠ–
+        if (key_state != 0) {
+          if (key_debounce_count == 0) {
+            // °´¼ü°´ÏÂÇÒÎ´´¦Àí¹ı£¬ÉèÖÃ¶Ì°´±êÖ¾
+            g_key_pressed_flag = 1;
+            g_current_key_value = key_state;
+            key_debounce_count = 1;  // ¿ªÊ¼·À¶¶¼ÆÊı
+            key_hold_count = 0;      // ÖØÖÃ³¤°´¼ÆÊı
+          } else {
+            // °´¼ü³ÖĞø°´ÏÂ£¬Ôö¼Ó³¤°´¼ÆÊı
+            key_hold_count++;
+            // 1.5Ãë³¤°´¼ì²â£º1500ms / 20ms = 75´Î
+            if (key_hold_count >= 75 && key_state == 1) {  // Ö»¼ì²âUP¼ü³¤°´
+              // ´¥·¢³¤°´ÊÂ¼ş
+              extern void InterfaceManager_HandleLongPress(uint8_t key);
+              InterfaceManager_HandleLongPress(key_state);
+              key_hold_count = 0;  // ÖØÖÃ¼ÆÊı£¬±ÜÃâÖØ¸´´¥·¢
+            }
+          }
+        } else {
+          key_debounce_count = 0;  // °´¼üÊÍ·Å£¬Çå³ı·À¶¶
+          key_hold_count = 0;      // Çå³ı³¤°´¼ÆÊı
         }
       } else {
         last_key_state = key_state;
         key_debounce_count = 0;
+        key_hold_count = 0;
       }
     }
   }
