@@ -1,0 +1,6 @@
+--cpu Cortex-M3
+".\objects\kof97b.o"
+--library_type=microlib --nodebug --strict --scatter ".\flash_download.sct"
+--diag_suppress L6305 --summary_stderr --info summarysizes --map --load_addr_map_info --xref --callgraph --symbols
+--info sizes --info totals --info unused --info veneers
+--list ".\Listings\flash_download.map" -o .\Objects\flash_download.axf

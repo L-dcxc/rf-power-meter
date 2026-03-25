@@ -64,7 +64,7 @@ void LCD_SetBacklight(uint16_t brightness); // ??????????? 0-999
 void LCD_ShowChar(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, uint8_t num, uint8_t size, uint8_t mode);
 void Show_Str(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, uint8_t *str, uint8_t size, uint8_t mode);
 void GUI_DrawFont16(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, uint8_t *s, uint8_t mode);
-void Show_Chinese(uint16_t x, uint16_t y, uint16_t fc, uint16_t bc, char* text, uint8_t size, uint8_t mode);
+
 
 // ???????????
 void LCD_DrawLine(uint16_t x1, uint16_t y1, uint16_t x2, uint16_t y2);

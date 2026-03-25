@@ -1,0 +1,14 @@
+--cpu Cortex-M3
+".\objects\flashprg.o"
+".\objects\flashdev.o"
+".\objects\stm32f103_flash_hard_stdspi_port.o"
+".\objects\w25qxx.o"
+".\objects\stm32f10x_gpio.o"
+".\objects\stm32f10x_rcc.o"
+".\objects\system_stm32f10x.o"
+".\objects\stm32f10x_spi.o"
+".\objects\stm32f10x_dma.o"
+--strict --scatter ".\Target.lin"
+--diag_suppress L6305 --summary_stderr --info summarysizes --map --load_addr_map_info --symbols
+--info sizes --info totals --info unused --info veneers
+--list ".\Listings\WE_STM32F103_W25Q128.map" -o .\Objects\WE_STM32F103_W25Q128.axf

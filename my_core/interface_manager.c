@@ -1,7 +1,7 @@
 /**
  * @file interface_manager.c
- * @brief ÉäÆµ¹¦ÂÊ¼Æ½çÃæ¹ÜÀíÏµÍ³ÊµÏÖÎÄ¼ş
- * @author òùòğÑ¼
+ * @brief å°„é¢‘åŠŸç‡è®¡ç•Œé¢ç®¡ç†ç³»ç»Ÿå®ç°æ–‡ä»¶
+ * @author è™è é¸­
  * @date 2025-08-10
  */
 
@@ -15,11 +15,11 @@
 #include <string.h>
 #include <math.h>
 #include "stm32f1xx_it.h"
-// Íâ²¿±äÁ¿ÉùÃ÷
+// å¤–éƒ¨å˜é‡å£°æ˜
 extern IWDG_HandleTypeDef hiwdg;
 extern ADC_HandleTypeDef hadc1;
 
-/* È«¾Ö±äÁ¿¶¨Òå */
+/* å…¨å±€å˜é‡å®šä¹‰ */
 InterfaceManager_t g_interface_manager = {
     .current_interface = INTERFACE_MAIN,
     .menu_cursor = 0,
@@ -49,43 +49,43 @@ RFParams_t g_rf_params = {
     .is_valid = 0
 };
 
-/* ·äÃùÆ÷×´Ì¬È«¾Ö±äÁ¿ */
+/* èœ‚é¸£å™¨çŠ¶æ€å…¨å±€å˜é‡ */
 BuzzerState_t g_buzzer_state = {
     .is_active = 0,
     .duration_count = 0
 };
 
-/* Ğ£×¼Êı¾İÈ«¾Ö±äÁ¿ */
+/* æ ¡å‡†æ•°æ®å…¨å±€å˜é‡ */
 CalibrationData_t g_calibration_data = {
     .forward_offset = 0.0f,
     .reflected_offset = 0.0f,
     .fwd_table = {
-        // ³õÊ¼»¯20¸öĞ£×¼µãµÄÄ¬ÈÏÖµ
+        // åˆå§‹åŒ–20ä¸ªæ ¡å‡†ç‚¹çš„é»˜è®¤å€¼
         {100.0f, 1.0f}, {200.0f, 2.0f}, {300.0f, 3.0f}, {400.0f, 4.0f}, {500.0f, 5.0f},
         {600.0f, 6.0f}, {700.0f, 7.0f}, {800.0f, 8.0f}, {900.0f, 9.0f}, {1000.0f, 10.0f},
         {1100.0f, 11.0f}, {1200.0f, 12.0f}, {1300.0f, 13.0f}, {1400.0f, 14.0f}, {1500.0f, 15.0f},
         {1600.0f, 16.0f}, {1700.0f, 17.0f}, {1800.0f, 18.0f}, {1900.0f, 19.0f}, {2000.0f, 20.0f}
     },
     .ref_table = {
-        // ·´Éä¹¦ÂÊĞ£×¼±í³õÊ¼Öµ
+        // åå°„åŠŸç‡æ ¡å‡†è¡¨åˆå§‹å€¼
         {100.0f, 0.1f}, {200.0f, 0.2f}, {300.0f, 0.3f}, {400.0f, 0.4f}, {500.0f, 0.5f},
         {600.0f, 0.6f}, {700.0f, 0.7f}, {800.0f, 0.8f}, {900.0f, 0.9f}, {1000.0f, 1.0f},
         {1100.0f, 1.1f}, {1200.0f, 1.2f}, {1300.0f, 1.3f}, {1400.0f, 1.4f}, {1500.0f, 1.5f},
         {1600.0f, 1.6f}, {1700.0f, 1.7f}, {1800.0f, 1.8f}, {1900.0f, 1.9f}, {2000.0f, 2.0f}
     },
-    .fwd_points = 0,            // ³õÊ¼ÎŞĞ£×¼µã
-    .ref_points = 0,            // ³õÊ¼ÎŞĞ£×¼µã
-    .freq_gain_fwd = 1.0f,      // ÆµÂÊÔöÒæĞŞÕıÏµÊı(ÕıÏò)
-    .freq_gain_ref = 1.0f,      // ÆµÂÊÔöÒæĞŞÕıÏµÊı(·´Éä)
-    .cal_frequency = 14.0f,     // ±ê¶¨ÆµÂÊ(MHz)
+    .fwd_points = 0,            // åˆå§‹æ— æ ¡å‡†ç‚¹
+    .ref_points = 0,            // åˆå§‹æ— æ ¡å‡†ç‚¹
+    .freq_gain_fwd = 1.0f,      // é¢‘ç‡å¢ç›Šä¿®æ­£ç³»æ•°(æ­£å‘)
+    .freq_gain_ref = 1.0f,      // é¢‘ç‡å¢ç›Šä¿®æ­£ç³»æ•°(åå°„)
+    .cal_frequency = 14.0f,     // æ ‡å®šé¢‘ç‡(MHz)
     .freq_trim = 1.0f,
     .is_calibrated = 0
 };
 
-/* Ğ£×¼×´Ì¬È«¾Ö±äÁ¿ */
+/* æ ¡å‡†çŠ¶æ€å…¨å±€å˜é‡ */
 CalibrationState_t g_calibration_state = {
     .current_step = CAL_STEP_CONFIRM,
-    .cal_frequency = 14.0f,     // Ä¬ÈÏ±ê¶¨ÆµÂÊ14MHz
+    .cal_frequency = 14.0f,     // é»˜è®¤æ ‡å®šé¢‘ç‡14MHz
     .current_power_point = 0,
     .current_channel = 0,
     .sample_count = 0,
@@ -93,17 +93,17 @@ CalibrationState_t g_calibration_state = {
     .sample_sum_ref = 0.0f,
     .is_stable = 0,
     .stable_count = 0,
-    .target_power = 100.0f,     // Ä¬ÈÏÄ¿±ê¹¦ÂÊ100W
-    .power_cal_mode = 0,        // Ä¬ÈÏÕıÏò¹¦ÂÊĞ£×¼
-    .sample_completed = 0       // ²ÉÑùÎ´Íê³É
+    .target_power = 100.0f,     // é»˜è®¤ç›®æ ‡åŠŸç‡100W
+    .power_cal_mode = 0,        // é»˜è®¤æ­£å‘åŠŸç‡æ ¡å‡†
+    .sample_completed = 0       // é‡‡æ ·æœªå®Œæˆ
 };
 
-/* ÆµÂÊ±ê¶¨·¶Î§¶¨Òå */
-#define MIN_CAL_FREQ    1.0f    // ×îĞ¡±ê¶¨ÆµÂÊ(MHz)
-#define MAX_CAL_FREQ    50.0f   // ×î´ó±ê¶¨ÆµÂÊ(MHz)
-#define FREQ_STEP       1.0f    // ÆµÂÊµ÷Õû²½³¤(MHz)
+/* é¢‘ç‡æ ‡å®šèŒƒå›´å®šä¹‰ */
+#define MIN_CAL_FREQ    1.0f    // æœ€å°æ ‡å®šé¢‘ç‡(MHz)
+#define MAX_CAL_FREQ    50.0f   // æœ€å¤§æ ‡å®šé¢‘ç‡(MHz)
+#define FREQ_STEP       1.0f    // é¢‘ç‡è°ƒæ•´æ­¥é•¿(MHz)
 
-/* ¹¦ÂÊĞ£×¼µã¶¨Òå (0W-2kW·¶Î§£¬20¸öĞ£×¼µã) */
+/* åŠŸç‡æ ¡å‡†ç‚¹å®šä¹‰ (0W-2kWèŒƒå›´ï¼Œ20ä¸ªæ ¡å‡†ç‚¹) */
 static const float power_cal_points[20] = {
     100.0f, 200.0f, 300.0f, 400.0f, 500.0f,      // 100W-500W
     600.0f, 700.0f, 800.0f, 900.0f, 1000.0f,     // 600W-1000W
@@ -113,7 +113,7 @@ static const float power_cal_points[20] = {
 
 
 
-/* ²Ëµ¥±í¶¨Òå */
+/* èœå•è¡¨å®šä¹‰ */
 const MenuItem_t menu_table[MAX_MENU_ITEMS] = {
     {INTERFACE_CALIBRATION, INTERFACE_MENU, INTERFACE_STANDARD, Interface_DisplayCalibration, "Calibration"},
     {INTERFACE_STANDARD, INTERFACE_MENU, INTERFACE_ALARM, Interface_DisplayStandard, "Settings"},
@@ -124,81 +124,81 @@ const MenuItem_t menu_table[MAX_MENU_ITEMS] = {
 };
 
 /**
- * @brief ½çÃæ¹ÜÀíÆ÷³õÊ¼»¯
+ * @brief ç•Œé¢ç®¡ç†å™¨åˆå§‹åŒ–
  */
 int8_t InterfaceManager_Init(void)
 {
-    // ³õÊ¼»¯EEPROM
+    // åˆå§‹åŒ–EEPROM
     BL24C16_Init();
 
-    // ³õÊ¼»¯½çÃæ¹ÜÀíÆ÷×´Ì¬
+    // åˆå§‹åŒ–ç•Œé¢ç®¡ç†å™¨çŠ¶æ€
     g_interface_manager.current_interface = INTERFACE_MAIN;
     g_interface_manager.menu_cursor = 0;
 
-    // ´ÓEEPROM¶ÁÈ¡ÁÁ¶ÈÖµ£¬Ê§°ÜÔòÊ¹ÓÃÄ¬ÈÏÖµ
+    // ä»EEPROMè¯»å–äº®åº¦å€¼ï¼Œå¤±è´¥åˆ™ä½¿ç”¨é»˜è®¤å€¼
     uint8_t saved_brightness;
     if (BL24C16_Read(0x0000, &saved_brightness, 1) == EEPROM_OK && saved_brightness >= 1 && saved_brightness <= 10) {
         g_interface_manager.brightness_level = saved_brightness;
     } else {
-        g_interface_manager.brightness_level = 8;  // Ä¬ÈÏ80%ÁÁ¶È
+        g_interface_manager.brightness_level = 8;  // é»˜è®¤80%äº®åº¦
     }
 
-    // ´ÓEEPROM¶ÁÈ¡±¨¾¯ÉèÖÃ£¬Ê§°ÜÔòÊ¹ÓÃÄ¬ÈÏÖµ
+    // ä»EEPROMè¯»å–æŠ¥è­¦è®¾ç½®ï¼Œå¤±è´¥åˆ™ä½¿ç”¨é»˜è®¤å€¼
     uint8_t saved_alarm_enabled;
     float saved_vswr_threshold;
     if (BL24C16_Read(0x0001, &saved_alarm_enabled, 1) == EEPROM_OK && saved_alarm_enabled <= 1) {
         g_interface_manager.alarm_enabled = saved_alarm_enabled;
     } else {
-        g_interface_manager.alarm_enabled = 1;     // Ä¬ÈÏÊ¹ÄÜ±¨¾¯
+        g_interface_manager.alarm_enabled = 1;     // é»˜è®¤ä½¿èƒ½æŠ¥è­¦
     }
     if (BL24C16_Read(0x0002, (uint8_t*)&saved_vswr_threshold, sizeof(float)) == EEPROM_OK &&
         saved_vswr_threshold >= 1.0f && saved_vswr_threshold <= 999.9f) {
         g_interface_manager.vswr_alarm_threshold = saved_vswr_threshold;
     } else {
-        g_interface_manager.vswr_alarm_threshold = 3.0f;  // Ä¬ÈÏVSWR±¨¾¯ãĞÖµ
+        g_interface_manager.vswr_alarm_threshold = 3.0f;  // é»˜è®¤VSWRæŠ¥è­¦é˜ˆå€¼
     }
-    g_interface_manager.alarm_selected_item = 0;  // Ä¬ÈÏÑ¡ÖĞ±¨¾¯¿ª¹Ø
+    g_interface_manager.alarm_selected_item = 0;  // é»˜è®¤é€‰ä¸­æŠ¥è­¦å¼€å…³
     g_interface_manager.last_update_time = 0;
     g_interface_manager.need_refresh = 1;
     
-    // ³õÊ¼»¯¹¦ÂÊÊı¾İ
+    // åˆå§‹åŒ–åŠŸç‡æ•°æ®
     g_power_result.forward_power = 0.0f;
     g_power_result.reflected_power = 0.0f;
     g_power_result.forward_unit = POWER_UNIT_W;
     g_power_result.reflected_unit = POWER_UNIT_W;
     g_power_result.is_valid = 0;
     
-    // ³õÊ¼»¯ÉäÆµ²ÎÊı
+    // åˆå§‹åŒ–å°„é¢‘å‚æ•°
     g_rf_params.vswr = 1.0f;
     g_rf_params.reflection_coeff = 0.0f;
     g_rf_params.transmission_eff = 100.0f;
     g_rf_params.vswr_color = VSWR_COLOR_GREEN;
     g_rf_params.is_valid = 0;
     
-    // ÉèÖÃ³õÊ¼±³¹âÁÁ¶È
+    // è®¾ç½®åˆå§‹èƒŒå…‰äº®åº¦
     InterfaceManager_SetBrightness(g_interface_manager.brightness_level);
 
-    // ³õÊ¼»¯Ğ£×¼ÏµÍ³
+    // åˆå§‹åŒ–æ ¡å‡†ç³»ç»Ÿ
     Calibration_Init();
 
     return 0;
 }
 
 /**
- * @brief ½çÃæ¹ÜÀíÆ÷Ö÷Ñ­»·´¦Àí
+ * @brief ç•Œé¢ç®¡ç†å™¨ä¸»å¾ªç¯å¤„ç†
  */
 void InterfaceManager_Process(void)
 {
     uint32_t current_time = HAL_GetTick();
     
-    // ¼ì²éÊÇ·ñĞèÒª¸üĞÂÏÔÊ¾
+    // æ£€æŸ¥æ˜¯å¦éœ€è¦æ›´æ–°æ˜¾ç¤º
     if (current_time - g_interface_manager.last_update_time >= DISPLAY_UPDATE_MS || 
         g_interface_manager.need_refresh) {
         
         g_interface_manager.last_update_time = current_time;
         g_interface_manager.need_refresh = 0;
         
-        // ¸ù¾İµ±Ç°½çÃæµ÷ÓÃÏàÓ¦µÄÏÔÊ¾º¯Êı
+        // æ ¹æ®å½“å‰ç•Œé¢è°ƒç”¨ç›¸åº”çš„æ˜¾ç¤ºå‡½æ•°
         switch (g_interface_manager.current_interface) {
             case INTERFACE_MAIN:
                 Interface_DisplayMain();
@@ -246,72 +246,72 @@ void InterfaceManager_Process(void)
         }
     }
     
-    // ´¦ÀíĞ£×¼²ÉÑù£¨Èç¹ûÔÚĞ£×¼Ä£Ê½ÖĞ£©
+    // å¤„ç†æ ¡å‡†é‡‡æ ·ï¼ˆå¦‚æœåœ¨æ ¡å‡†æ¨¡å¼ä¸­ï¼‰
     if (g_interface_manager.current_interface >= INTERFACE_CAL_ZERO &&
         g_interface_manager.current_interface <= INTERFACE_CAL_BAND) {
         Calibration_ProcessSample();
     }
 
-    // ´¦Àí°´¼ü
+    // å¤„ç†æŒ‰é”®
     KeyValue_t key = InterfaceManager_GetKey();
     if (key != KEY_NONE) {
         InterfaceManager_HandleKey(key, KEY_STATE_PRESSED);
-        InterfaceManager_Beep(50);  // °´¼ü·´À¡Òô
+        InterfaceManager_Beep(50);  // æŒ‰é”®åé¦ˆéŸ³
     }
 }
 
 /**
- * @brief ³¤°´´¦Àíº¯Êı
+ * @brief é•¿æŒ‰å¤„ç†å‡½æ•°
  */
 void InterfaceManager_HandleLongPress(uint8_t key)
 {
-    if (key == 1) {  // UP¼ü³¤°´
+    if (key == 1) {  // UPé”®é•¿æŒ‰
         switch (g_interface_manager.current_interface) {
             case INTERFACE_CAL_POWER:
-                // ¹¦ÂÊ±ê¶¨½çÃæ³¤°´UP¼ü·µ»ØÁãµã±ê¶¨
+                // åŠŸç‡æ ‡å®šç•Œé¢é•¿æŒ‰UPé”®è¿”å›é›¶ç‚¹æ ‡å®š
                 Calibration_StartStep(CAL_STEP_ZERO);
                 InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
-                InterfaceManager_Beep(200);  // ³¤°´·´À¡Òô
+                InterfaceManager_Beep(200);  // é•¿æŒ‰åé¦ˆéŸ³
                 break;
 
-            case INTERFACE_CAL_BAND://²»´¦Àí
-                // // ÆµÂÊ±ê¶¨½çÃæ³¤°´UP¼ü·µ»ØÁãµã±ê¶¨
+            case INTERFACE_CAL_BAND://ä¸å¤„ç†
+                // // é¢‘ç‡æ ‡å®šç•Œé¢é•¿æŒ‰UPé”®è¿”å›é›¶ç‚¹æ ‡å®š
                 // Calibration_StartStep(CAL_STEP_ZERO);
                 // InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
-                // InterfaceManager_Beep(200);  // ³¤°´·´À¡Òô
+                // InterfaceManager_Beep(200);  // é•¿æŒ‰åé¦ˆéŸ³
                 break;
 
             default:
-                // ÆäËû½çÃæ²»´¦Àí³¤°´
+                // å…¶ä»–ç•Œé¢ä¸å¤„ç†é•¿æŒ‰
                 break;
         }
     }
 }
 
 /**
- * @brief °´¼ü´¦Àíº¯Êı
+ * @brief æŒ‰é”®å¤„ç†å‡½æ•°
  */
 void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
 {
     switch (g_interface_manager.current_interface) {
         case INTERFACE_MAIN:
-            // Ö÷½çÃæ°´¼ü´¦Àí
+            // ä¸»ç•Œé¢æŒ‰é”®å¤„ç†
             if (key == KEY_OK) {
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             }
             break;
             
         case INTERFACE_MENU:
-            // ²Ëµ¥½çÃæ°´¼ü´¦Àí
+            // èœå•ç•Œé¢æŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
-                // ·µ»ØÖ÷½çÃæ
+                // è¿”å›ä¸»ç•Œé¢
                 InterfaceManager_SwitchTo(INTERFACE_MAIN);
             } else if (key == KEY_DOWN) {
-                // ÇĞ»»²Ëµ¥Ïî
+                // åˆ‡æ¢èœå•é¡¹
                 g_interface_manager.menu_cursor = (g_interface_manager.menu_cursor + 1) % (MAX_MENU_ITEMS - 1);
                 g_interface_manager.need_refresh = 1;
             } else if (key == KEY_OK) {
-                // ½øÈëÑ¡ÖĞµÄ²Ëµ¥Ïî
+                // è¿›å…¥é€‰ä¸­çš„èœå•é¡¹
                 InterfaceIndex_t target;
                 switch (g_interface_manager.menu_cursor) {
                     case 0: target = INTERFACE_CALIBRATION; break;
@@ -326,55 +326,55 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             break;
             
         case INTERFACE_STANDARD:
-            // ÉèÖÃ½çÃæ°´¼ü´¦Àí
+            // è®¾ç½®ç•Œé¢æŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
-                // ·µ»Ø²Ëµ¥
+                // è¿”å›èœå•
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             }
             break;
 
         case INTERFACE_BRIGHTNESS:
-            // ÁÁ¶È½çÃæ°´¼ü´¦Àí
+            // äº®åº¦ç•Œé¢æŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
-                // ·µ»Ø²Ëµ¥
+                // è¿”å›èœå•
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             } else if (key == KEY_DOWN) {
-                // µ÷½ÚÁÁ¶È (1-10Ñ­»·)
+                // è°ƒèŠ‚äº®åº¦ (1-10å¾ªç¯)
                 uint8_t new_level = g_interface_manager.brightness_level + 1;
                 if (new_level > 10) {
-                    new_level = 1;  // Ñ­»·µ½×îµÍÁÁ¶È
+                    new_level = 1;  // å¾ªç¯åˆ°æœ€ä½äº®åº¦
                     LCD_Fill(11, 76, 138, 84, BLACK);
                 }
                 InterfaceManager_SetBrightness(new_level);
-                g_interface_manager.need_refresh = 1;  // Á¢¼´Ë¢ĞÂÏÔÊ¾
+                g_interface_manager.need_refresh = 1;  // ç«‹å³åˆ·æ–°æ˜¾ç¤º
             } else if (key == KEY_OK) {
-                // È·ÈÏµ±Ç°ÁÁ¶ÈÉèÖÃ£¬±£´æµ½EEPROM
+                // ç¡®è®¤å½“å‰äº®åº¦è®¾ç½®ï¼Œä¿å­˜åˆ°EEPROM
                 BL24C16_Write(0x0000, &g_interface_manager.brightness_level, 1);
-                // ·µ»Ø²Ëµ¥
+                // è¿”å›èœå•
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             }
             break;
 
         case INTERFACE_ALARM:
-            // ³¬ÏŞ±¨¾¯½çÃæ°´¼ü´¦Àí
+            // è¶…é™æŠ¥è­¦ç•Œé¢æŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
-                // ·µ»Ø²Ëµ¥
+                // è¿”å›èœå•
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             } else if (key == KEY_DOWN) {
-                // ÇĞ»»Ñ¡ÖĞÏî£¨±¨¾¯¿ª¹Ø ¡ú °ÙÎ» ¡ú Ê®Î» ¡ú ¸öÎ» ¡ú Ğ¡ÊıÎ» ¡ú ±¨¾¯¿ª¹Ø£©
+                // åˆ‡æ¢é€‰ä¸­é¡¹ï¼ˆæŠ¥è­¦å¼€å…³ â†’ ç™¾ä½ â†’ åä½ â†’ ä¸ªä½ â†’ å°æ•°ä½ â†’ æŠ¥è­¦å¼€å…³ï¼‰
                 g_interface_manager.alarm_selected_item =
                     (g_interface_manager.alarm_selected_item + 1) % 5;
                 g_interface_manager.need_refresh = 1;
             } else if (key == KEY_OK) {
-                // µ÷½Úµ±Ç°Ñ¡ÖĞµÄÏîÄ¿
+                // è°ƒèŠ‚å½“å‰é€‰ä¸­çš„é¡¹ç›®
                 if (g_interface_manager.alarm_selected_item == 0) {
-                    // ÇĞ»»±¨¾¯¿ª¹Ø
+                    // åˆ‡æ¢æŠ¥è­¦å¼€å…³
                     g_interface_manager.alarm_enabled = !g_interface_manager.alarm_enabled;
                 } else {
-                    // µ÷½ÚVSWRãĞÖµµÄ¸÷¸öÎ»Êı£¨ĞŞ¸´¸¡µã¾«¶ÈÎÊÌâ£©
+                    // è°ƒèŠ‚VSWRé˜ˆå€¼çš„å„ä¸ªä½æ•°ï¼ˆä¿®å¤æµ®ç‚¹ç²¾åº¦é—®é¢˜ï¼‰
                     float current_value = g_interface_manager.vswr_alarm_threshold;
-                    // ×ª»»ÎªÕûÊı±ÜÃâ¸¡µã¾«¶ÈÎÊÌâ
-                    int total_tenths = (int)(current_value * 10.0f + 0.5f);  // ËÄÉáÎåÈëµ½0.1
+                    // è½¬æ¢ä¸ºæ•´æ•°é¿å…æµ®ç‚¹ç²¾åº¦é—®é¢˜
+                    int total_tenths = (int)(current_value * 10.0f + 0.5f);  // å››èˆäº”å…¥åˆ°0.1
 
                     int hundreds = (total_tenths / 1000) % 10;
                     int tens = (total_tenths / 100) % 10;
@@ -382,31 +382,31 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
                     int decimal = total_tenths % 10;
 
                     switch (g_interface_manager.alarm_selected_item) {
-                        case 1: // °ÙÎ»
+                        case 1: // ç™¾ä½
                             hundreds = (hundreds + 1) % 10;
                             break;
-                        case 2: // Ê®Î»
+                        case 2: // åä½
                             tens = (tens + 1) % 10;
                             break;
-                        case 3: // ¸öÎ»
+                        case 3: // ä¸ªä½
                             ones = (ones + 1) % 10;
                             break;
-                        case 4: // Ğ¡ÊıÎ»
+                        case 4: // å°æ•°ä½
                             decimal = (decimal + 1) % 10;
                             break;
                     }
 
-                    // ÖØĞÂ¼ÆËãVSWRÖµ£¨Ê¹ÓÃÕûÊı¼ÆËã±ÜÃâ¾«¶ÈÎÊÌâ£©
+                    // é‡æ–°è®¡ç®—VSWRå€¼ï¼ˆä½¿ç”¨æ•´æ•°è®¡ç®—é¿å…ç²¾åº¦é—®é¢˜ï¼‰
                     int new_total_tenths = hundreds * 1000 + tens * 100 + ones * 10 + decimal;
                     float new_value = (float)new_total_tenths / 10.0f;
 
-                    // ÏŞÖÆ·¶Î§ 1.0-999.9
+                    // é™åˆ¶èŒƒå›´ 1.0-999.9
                     if (new_value < 1.0f) new_value = 1.0f;
                     if (new_value > 999.9f) new_value = 999.9f;
 
                     g_interface_manager.vswr_alarm_threshold = new_value;
                 }
-                // ±£´æ±¨¾¯ÉèÖÃµ½EEPROM
+                // ä¿å­˜æŠ¥è­¦è®¾ç½®åˆ°EEPROM
                 BL24C16_Write(0x0001, &g_interface_manager.alarm_enabled, 1);
                 BL24C16_Write(0x0002, (uint8_t*)&g_interface_manager.vswr_alarm_threshold, sizeof(float));
                 g_interface_manager.need_refresh = 1;
@@ -414,46 +414,46 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             break;
 
         case INTERFACE_CALIBRATION:
-            // Ğ£×¼Èë¿Ú½çÃæ°´¼ü´¦Àí
+            // æ ¡å‡†å…¥å£ç•Œé¢æŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             } else if (key == KEY_OK) {
-                // ½øÈë²½ÖèÑ¡Ôñ½çÃæ
-                g_calibration_state.selected_step = 0;  // Ä¬ÈÏÑ¡ÔñÍêÕû±ê¶¨
+                // è¿›å…¥æ­¥éª¤é€‰æ‹©ç•Œé¢
+                g_calibration_state.selected_step = 0;  // é»˜è®¤é€‰æ‹©å®Œæ•´æ ‡å®š
                 InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
             }
             break;
 
         case INTERFACE_CAL_STEP_SELECT:
-            // ²½ÖèÑ¡Ôñ½çÃæ°´¼ü´¦Àí
+            // æ­¥éª¤é€‰æ‹©ç•Œé¢æŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
                 InterfaceManager_SwitchTo(INTERFACE_CALIBRATION);
             } else if (key == KEY_DOWN) {
-                // ÇĞ»»Ñ¡ÔñÏî (0¡ú1¡ú2¡ú3¡ú0Ñ­»·)
+                // åˆ‡æ¢é€‰æ‹©é¡¹ (0â†’1â†’2â†’3â†’0å¾ªç¯)
                 g_calibration_state.selected_step = (g_calibration_state.selected_step + 1) % 4;
                 g_interface_manager.need_refresh = 1;
             } else if (key == KEY_OK) {
-                // ¿ªÊ¼Ñ¡ÖĞµÄ±ê¶¨ÀàĞÍ
+                // å¼€å§‹é€‰ä¸­çš„æ ‡å®šç±»å‹
                 switch (g_calibration_state.selected_step) {
-                    case 0:  // ÍêÕû±ê¶¨
+                    case 0:  // å®Œæ•´æ ‡å®š
                         g_calibration_state.is_single_step = 0;
                         Calibration_StartStep(CAL_STEP_CONFIRM);
                         InterfaceManager_SwitchTo(INTERFACE_CAL_CONFIRM);
                         break;
-                    case 1:  // Áãµã±ê¶¨
+                    case 1:  // é›¶ç‚¹æ ‡å®š
                         g_calibration_state.is_single_step = 1;
                         Calibration_StartStep(CAL_STEP_ZERO);
                         InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
                         break;
-                    case 2:  // ¹¦ÂÊ±ê¶¨
+                    case 2:  // åŠŸç‡æ ‡å®š
                         g_calibration_state.is_single_step = 1;
-                        Calibration_InitPowerStep();  // ³õÊ¼»¯¹¦ÂÊ±ê¶¨×´Ì¬
+                        Calibration_InitPowerStep();  // åˆå§‹åŒ–åŠŸç‡æ ‡å®šçŠ¶æ€
                         Calibration_StartStep(CAL_STEP_POWER);
                         InterfaceManager_SwitchTo(INTERFACE_CAL_POWER);
                         break;
-                    case 3:  // ÆµÂÊ±ê¶¨
+                    case 3:  // é¢‘ç‡æ ‡å®š
                         g_calibration_state.is_single_step = 1;
-                        Calibration_InitBandStep();  // ³õÊ¼»¯ÆµÂÊ±ê¶¨×´Ì¬
+                        Calibration_InitBandStep();  // åˆå§‹åŒ–é¢‘ç‡æ ‡å®šçŠ¶æ€
                         Calibration_StartStep(CAL_STEP_BAND);
                         InterfaceManager_SwitchTo(INTERFACE_CAL_BAND);
                         break;
@@ -462,24 +462,24 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             break;
 
         case INTERFACE_CAL_CONFIRM:
-            // Ğ£×¼È·ÈÏÒ³°´¼ü´¦Àí
+            // æ ¡å‡†ç¡®è®¤é¡µæŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
                 InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
             } else if (key == KEY_OK) {
-                // È·ÈÏ¿ªÊ¼Ğ£×¼
+                // ç¡®è®¤å¼€å§‹æ ¡å‡†
                 Calibration_StartStep(CAL_STEP_ZERO);
                 InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
             }
             break;
 
         case INTERFACE_CAL_ZERO:
-            // ÁãµãĞ£×¼°´¼ü´¦Àí
+            // é›¶ç‚¹æ ¡å‡†æŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
                 InterfaceManager_SwitchTo(INTERFACE_CAL_CONFIRM);
             } else if (key == KEY_OK) {
-                // ¿ªÊ¼Áãµã²ÉÑù
+                // å¼€å§‹é›¶ç‚¹é‡‡æ ·
                 if (g_calibration_state.sample_count == 0) {
-                    g_calibration_state.sample_count = 1;  // ¿ªÊ¼²ÉÑù
+                    g_calibration_state.sample_count = 1;  // å¼€å§‹é‡‡æ ·
                     g_calibration_state.sample_sum_fwd = 0.0f;
                     g_calibration_state.sample_sum_ref = 0.0f;
                     g_interface_manager.need_refresh = 1;
@@ -488,20 +488,20 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             break;
 
         case INTERFACE_CAL_POWER:
-            // ¹¦ÂÊĞ£×¼°´¼ü´¦Àí
+            // åŠŸç‡æ ¡å‡†æŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
-                // UP¼ü£ºÉÏÒ»¸öĞ£×¼µã
-                if (g_calibration_state.current_channel == 0) {  // ÕıÏò¹¦ÂÊĞ£×¼
+                // UPé”®ï¼šä¸Šä¸€ä¸ªæ ¡å‡†ç‚¹
+                if (g_calibration_state.current_channel == 0) {  // æ­£å‘åŠŸç‡æ ¡å‡†
                     if (g_calibration_state.current_power_point > 0) {
                         g_calibration_state.current_power_point--;
                         g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
                     }
-                } else {  // ·´Éä¹¦ÂÊĞ£×¼
+                } else {  // åå°„åŠŸç‡æ ¡å‡†
                     if (g_calibration_state.current_power_point > 0) {
                         g_calibration_state.current_power_point--;
                         g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
                     } else {
-                        // ´Ó·´ÉäµÚ0µã·µ»Øµ½ÕıÏò×îºóÒ»µã
+                        // ä»åå°„ç¬¬0ç‚¹è¿”å›åˆ°æ­£å‘æœ€åä¸€ç‚¹
                         g_calibration_state.current_channel = 0;
                         g_calibration_state.current_power_point = 19;
                         g_calibration_state.target_power = power_cal_points[19];
@@ -509,29 +509,29 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
                 }
                 g_interface_manager.need_refresh = 1;
             } else if (key == KEY_DOWN) {
-                // ÇĞ»»µ½ÏÂÒ»¸öĞ£×¼µã»òÍ¨µÀ
-                if (g_calibration_state.current_channel == 0) {  // ÕıÏò¹¦ÂÊĞ£×¼
-                    if (g_calibration_state.current_power_point < 19) {  // 0-19¹²20¸öµã
+                // åˆ‡æ¢åˆ°ä¸‹ä¸€ä¸ªæ ¡å‡†ç‚¹æˆ–é€šé“
+                if (g_calibration_state.current_channel == 0) {  // æ­£å‘åŠŸç‡æ ¡å‡†
+                    if (g_calibration_state.current_power_point < 19) {  // 0-19å…±20ä¸ªç‚¹
                         g_calibration_state.current_power_point++;
                         g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
                     } else {
-                        // ÇĞ»»µ½·´Éä¹¦ÂÊĞ£×¼
+                        // åˆ‡æ¢åˆ°åå°„åŠŸç‡æ ¡å‡†
                         g_calibration_state.current_channel = 1;
                         g_calibration_state.current_power_point = 0;
                         g_calibration_state.target_power = power_cal_points[0];
                     }
-                } else {  // ·´Éä¹¦ÂÊĞ£×¼
-                    if (g_calibration_state.current_power_point < 19) {  // 0-19¹²20¸öµã
+                } else {  // åå°„åŠŸç‡æ ¡å‡†
+                    if (g_calibration_state.current_power_point < 19) {  // 0-19å…±20ä¸ªç‚¹
                         g_calibration_state.current_power_point++;
                         g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
                     } else {
-                        // Íê³É¹¦ÂÊĞ£×¼
+                        // å®ŒæˆåŠŸç‡æ ¡å‡†
                         if (g_calibration_state.is_single_step) {
-                            // µ¥²½±ê¶¨Íê³É£¬·µ»Ø²½ÖèÑ¡Ôñ½çÃæ
+                            // å•æ­¥æ ‡å®šå®Œæˆï¼Œè¿”å›æ­¥éª¤é€‰æ‹©ç•Œé¢
                             InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
                         } else {
-                            // ÍêÕû±ê¶¨£¬½øÈëÏÂÒ»²½
-                            Calibration_InitBandStep();  // ³õÊ¼»¯ÆµÂÊ±ê¶¨×´Ì¬
+                            // å®Œæ•´æ ‡å®šï¼Œè¿›å…¥ä¸‹ä¸€æ­¥
+                            Calibration_InitBandStep();  // åˆå§‹åŒ–é¢‘ç‡æ ‡å®šçŠ¶æ€
                             Calibration_StartStep(CAL_STEP_BAND);
                             InterfaceManager_SwitchTo(INTERFACE_CAL_BAND);
                         }
@@ -540,34 +540,34 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
                 }
                 g_interface_manager.need_refresh = 1;
             } else if (key == KEY_OK) {
-                // ¿ªÊ¼µ±Ç°µãµÄ²ÉÑù
+                // å¼€å§‹å½“å‰ç‚¹çš„é‡‡æ ·
                 if (g_calibration_state.sample_count == 0 && g_calibration_state.is_stable) {
-                    g_calibration_state.sample_count = 1;  // ¿ªÊ¼²ÉÑù
+                    g_calibration_state.sample_count = 1;  // å¼€å§‹é‡‡æ ·
                     g_calibration_state.sample_sum_fwd = 0.0f;
                     g_calibration_state.sample_sum_ref = 0.0f;
                     g_interface_manager.need_refresh = 1;
                 }
             }
-            // ³¤°´UP¼ü·µ»ØÁãµã±ê¶¨¹¦ÄÜÒÑÊµÏÖ
+            // é•¿æŒ‰UPé”®è¿”å›é›¶ç‚¹æ ‡å®šåŠŸèƒ½å·²å®ç°
             break;
 
         case INTERFACE_CAL_BAND:
-            // ÆµÂÊ±ê¶¨°´¼ü´¦Àí
+            // é¢‘ç‡æ ‡å®šæŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
-                // ·µ»Ø¹¦ÂÊĞ£×¼Ê±ÖØÖÃ×´Ì¬
+                // è¿”å›åŠŸç‡æ ¡å‡†æ—¶é‡ç½®çŠ¶æ€
                 Calibration_StartStep(CAL_STEP_POWER);
                 InterfaceManager_SwitchTo(INTERFACE_CAL_POWER);
             } else if (key == KEY_DOWN) {
-                // µ÷Õû±ê¶¨ÆµÂÊ (+1MHz£¬Ñ­»·)
+                // è°ƒæ•´æ ‡å®šé¢‘ç‡ (+1MHzï¼Œå¾ªç¯)
                 g_calibration_state.cal_frequency += FREQ_STEP;
                 if (g_calibration_state.cal_frequency > MAX_CAL_FREQ) {
-                    g_calibration_state.cal_frequency = MIN_CAL_FREQ;  // Ñ­»·µ½×îĞ¡Öµ
+                    g_calibration_state.cal_frequency = MIN_CAL_FREQ;  // å¾ªç¯åˆ°æœ€å°å€¼
                 }
                 g_interface_manager.need_refresh = 1;
             } else if (key == KEY_OK) {
-                // ¿ªÊ¼ÆµÂÊ±ê¶¨²ÉÑù
+                // å¼€å§‹é¢‘ç‡æ ‡å®šé‡‡æ ·
                 if (g_calibration_state.sample_count == 0 && g_calibration_state.is_stable) {
-                    g_calibration_state.sample_count = 1;  // ¿ªÊ¼²ÉÑù
+                    g_calibration_state.sample_count = 1;  // å¼€å§‹é‡‡æ ·
                     g_calibration_state.sample_sum_fwd = 0.0f;
                     g_calibration_state.sample_sum_ref = 0.0f;
                     g_interface_manager.need_refresh = 1;
@@ -580,7 +580,7 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
 
 
         case INTERFACE_CAL_COMPLETE:
-            // Ğ£×¼Íê³É°´¼ü´¦Àí
+            // æ ¡å‡†å®ŒæˆæŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             } else if (key == KEY_OK) {
@@ -589,9 +589,9 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
             break;
 
         default:
-            // ÆäËû½çÃæ°´¼ü´¦Àí
+            // å…¶ä»–ç•Œé¢æŒ‰é”®å¤„ç†
             if (key == KEY_UP) {
-                // ·µ»Ø²Ëµ¥
+                // è¿”å›èœå•
                 InterfaceManager_SwitchTo(INTERFACE_MENU);
             }
             break;
@@ -599,25 +599,25 @@ void InterfaceManager_HandleKey(KeyValue_t key, KeyState_t state)
 }
 
 /**
- * @brief ÇĞ»»µ½Ö¸¶¨½çÃæ
+ * @brief åˆ‡æ¢åˆ°æŒ‡å®šç•Œé¢
  */
 void InterfaceManager_SwitchTo(InterfaceIndex_t interface)
 {
     if (interface != g_interface_manager.current_interface) {
         g_interface_manager.current_interface = interface;
         g_interface_manager.need_refresh = 1;
-        g_interface_manager.interface_first_enter = 1;  // ÉèÖÃÊ×´Î½øÈë±êÖ¾
-        LCD_Clear(BLACK);  // ÇåÆÁ
+        g_interface_manager.interface_first_enter = 1;  // è®¾ç½®é¦–æ¬¡è¿›å…¥æ ‡å¿—
+        LCD_Clear(BLACK);  // æ¸…å±
 
-        // ½çÃæÇĞ»»Ê±µÄÌØÊâ´¦Àí
+        // ç•Œé¢åˆ‡æ¢æ—¶çš„ç‰¹æ®Šå¤„ç†
         if (interface == INTERFACE_ALARM) {
-            g_interface_manager.alarm_selected_item = 0;  // ÖØÖÃÎªÑ¡ÖĞ±¨¾¯¿ª¹Ø
+            g_interface_manager.alarm_selected_item = 0;  // é‡ç½®ä¸ºé€‰ä¸­æŠ¥è­¦å¼€å…³
         }
     }
 }
 
 /**
- * @brief Ç¿ÖÆË¢ĞÂµ±Ç°½çÃæ
+ * @brief å¼ºåˆ¶åˆ·æ–°å½“å‰ç•Œé¢
  */
 void InterfaceManager_ForceRefresh(void)
 {
@@ -625,11 +625,11 @@ void InterfaceManager_ForceRefresh(void)
 }
 
 /**
- * @brief ¸üĞÂ¹¦ÂÊÊı¾İ
+ * @brief æ›´æ–°åŠŸç‡æ•°æ®
  */
 void InterfaceManager_UpdatePower(float forward_power, float reflected_power)
 {
-    // ¹¦ÂÊÏÔÊ¾ÎªÕûÊıW (0-2000W·¶Î§)
+    // åŠŸç‡æ˜¾ç¤ºä¸ºæ•´æ•°W (0-2000WèŒƒå›´)
     g_power_result.forward_power = forward_power;
     g_power_result.forward_unit = POWER_UNIT_W;
 
@@ -638,14 +638,14 @@ void InterfaceManager_UpdatePower(float forward_power, float reflected_power)
     
     g_power_result.is_valid = 1;
     
-    // Èç¹ûÔÚÖ÷½çÃæ£¬±ê¼ÇĞèÒªË¢ĞÂ
+    // å¦‚æœåœ¨ä¸»ç•Œé¢ï¼Œæ ‡è®°éœ€è¦åˆ·æ–°
     if (g_interface_manager.current_interface == INTERFACE_MAIN) {
         g_interface_manager.need_refresh = 1;
     }
 }
 
 /**
- * @brief ¸üĞÂÉäÆµ²ÎÊı
+ * @brief æ›´æ–°å°„é¢‘å‚æ•°
  */
 void InterfaceManager_UpdateRFParams(float vswr, float reflection_coeff, float transmission_eff)
 {
@@ -653,9 +653,9 @@ void InterfaceManager_UpdateRFParams(float vswr, float reflection_coeff, float t
     g_rf_params.reflection_coeff = reflection_coeff;
     g_rf_params.transmission_eff = transmission_eff;
     
-    // ¸ù¾İVSWRÖµÉèÖÃÑÕÉ«¾¯Ê¾
+    // æ ¹æ®VSWRå€¼è®¾ç½®é¢œè‰²è­¦ç¤º
     if (vswr >= 999.0f) {
-        g_rf_params.vswr_color = VSWR_COLOR_RED;  // ÎŞÇî´óÏÔÊ¾ºìÉ«
+        g_rf_params.vswr_color = VSWR_COLOR_RED;  // æ— ç©·å¤§æ˜¾ç¤ºçº¢è‰²
     } else if (vswr <= 1.5f) {
         g_rf_params.vswr_color = VSWR_COLOR_GREEN;
     } else if (vswr <= 2.0f) {
@@ -666,30 +666,30 @@ void InterfaceManager_UpdateRFParams(float vswr, float reflection_coeff, float t
     
     g_rf_params.is_valid = 1;
     
-    // ¼ì²éÊÇ·ñĞèÒª±¨¾¯£¨±ê¶¨½çÃæ²»±¨¾¯£©
+    // æ£€æŸ¥æ˜¯å¦éœ€è¦æŠ¥è­¦ï¼ˆæ ‡å®šç•Œé¢ä¸æŠ¥è­¦ï¼‰
     if (g_interface_manager.alarm_enabled &&
         vswr > g_interface_manager.vswr_alarm_threshold &&
         g_interface_manager.current_interface != INTERFACE_CAL_ZERO &&
         g_interface_manager.current_interface != INTERFACE_CAL_POWER &&
         g_interface_manager.current_interface != INTERFACE_CAL_BAND) {
-        InterfaceManager_Beep(500);  // ±¨¾¯·äÃù
+        InterfaceManager_Beep(500);  // æŠ¥è­¦èœ‚é¸£
     }
     
-    // Èç¹ûÔÚÖ÷½çÃæ£¬±ê¼ÇĞèÒªË¢ĞÂ
+    // å¦‚æœåœ¨ä¸»ç•Œé¢ï¼Œæ ‡è®°éœ€è¦åˆ·æ–°
     if (g_interface_manager.current_interface == INTERFACE_MAIN) {
         g_interface_manager.need_refresh = 1;
     }
 }
 
 /**
- * @brief »ñÈ¡°´¼üÖµ
+ * @brief è·å–æŒ‰é”®å€¼
  */
 KeyValue_t InterfaceManager_GetKey(void)
 {
-    // ´Ó¶¨Ê±Æ÷ÖĞ¶Ï»ñÈ¡°´¼üÖµ
+    // ä»å®šæ—¶å™¨ä¸­æ–­è·å–æŒ‰é”®å€¼
     uint8_t key = GetKeyValue();
 
-    // ×ª»»°´¼üÖµ£º1=UP, 2=DOWN, 3=OK
+    // è½¬æ¢æŒ‰é”®å€¼ï¼š1=UP, 2=DOWN, 3=OK
     switch(key) {
         case 1: return KEY_UP;
         case 2: return KEY_DOWN;
@@ -699,7 +699,7 @@ KeyValue_t InterfaceManager_GetKey(void)
 }
 
 /**
- * @brief ÉèÖÃ±³¹âÁÁ¶È
+ * @brief è®¾ç½®èƒŒå…‰äº®åº¦
  */
 void InterfaceManager_SetBrightness(uint8_t level)
 {
@@ -707,61 +707,61 @@ void InterfaceManager_SetBrightness(uint8_t level)
     if (level < 1) level = 1;
     g_interface_manager.brightness_level = level;
 
-    // ¼ÆËãPWMÕ¼¿Õ±È (10%-100%)£¬Period=499
-    // level=1Ê±Ô¼10%Õ¼¿Õ±È(50), level=10Ê±100%Õ¼¿Õ±È(499)
-    uint16_t duty = (level * 449) / 10 + 50;  // 50-499·¶Î§
-    if (duty > 499) duty = 499;  // ÏŞÖÆ×î´óÖµ
+    // è®¡ç®—PWMå ç©ºæ¯” (10%-100%)ï¼ŒPeriod=499
+    // level=1æ—¶çº¦10%å ç©ºæ¯”(50), level=10æ—¶100%å ç©ºæ¯”(499)
+    uint16_t duty = (level * 449) / 10 + 50;  // 50-499èŒƒå›´
+    if (duty > 499) duty = 499;  // é™åˆ¶æœ€å¤§å€¼
 
-    // ÉèÖÃTIM3 CH3µÄPWMÕ¼¿Õ±È (PB0±³¹â¿ØÖÆ)
+    // è®¾ç½®TIM3 CH3çš„PWMå ç©ºæ¯” (PB0èƒŒå…‰æ§åˆ¶)
     LCD_SetBacklight(duty-1);
 }
 
 /**
- * @brief ´¥·¢·äÃùÆ÷£¨·Ç×èÈû·½Ê½£©
+ * @brief è§¦å‘èœ‚é¸£å™¨ï¼ˆéé˜»å¡æ–¹å¼ï¼‰
  */
 void InterfaceManager_Beep(uint16_t duration_ms)
 {
-    // ÉèÖÃ·äÃùÆ÷×´Ì¬
+    // è®¾ç½®èœ‚é¸£å™¨çŠ¶æ€
     g_buzzer_state.is_active = 1;
     g_buzzer_state.duration_count = duration_ms;
 
-    // Á¢¼´¿ªÆô·äÃùÆ÷ (PB4)
+    // ç«‹å³å¼€å¯èœ‚é¸£å™¨ (PB4)
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_SET);
 }
 
 /**
- * @brief ·äÃùÆ÷¶¨Ê±´¦Àíº¯Êı£¨ÔÚTIM3ÖĞ¶ÏÖĞµ÷ÓÃ£©
- * @note TIM3ÏÖÔÚÊÇ200Hz£¨Ã¿5msÖĞ¶ÏÒ»´Î£©£¬ËùÒÔÃ¿´Î¼õ5ms
+ * @brief èœ‚é¸£å™¨å®šæ—¶å¤„ç†å‡½æ•°ï¼ˆåœ¨TIM3ä¸­æ–­ä¸­è°ƒç”¨ï¼‰
+ * @note TIM3ç°åœ¨æ˜¯200Hzï¼ˆæ¯5msä¸­æ–­ä¸€æ¬¡ï¼‰ï¼Œæ‰€ä»¥æ¯æ¬¡å‡5ms
  */
 void InterfaceManager_BuzzerProcess(void)
 {
     if (g_buzzer_state.is_active) {
         if (g_buzzer_state.duration_count > 0) {
-            // Ã¿´Î¼õ5£¬ÒòÎªÏÖÔÚÊÇ5msÖĞ¶ÏÒ»´Î£¨200Hz£©
+            // æ¯æ¬¡å‡5ï¼Œå› ä¸ºç°åœ¨æ˜¯5msä¸­æ–­ä¸€æ¬¡ï¼ˆ200Hzï¼‰
             if (g_buzzer_state.duration_count >= 5) {
                 g_buzzer_state.duration_count -= 5;
             } else {
                 g_buzzer_state.duration_count = 0;
             }
         } else {
-            // Ê±¼äµ½£¬¹Ø±Õ·äÃùÆ÷
+            // æ—¶é—´åˆ°ï¼Œå…³é—­èœ‚é¸£å™¨
             g_buzzer_state.is_active = 0;
             HAL_GPIO_WritePin(GPIOB, GPIO_PIN_4, GPIO_PIN_RESET);
         }
     }
 }
 
-/* ========== Ğ£×¼¹¦ÄÜÊµÏÖ ========== */
+/* ========== æ ¡å‡†åŠŸèƒ½å®ç° ========== */
 
 /**
- * @brief Ğ£×¼ÏµÍ³³õÊ¼»¯
+ * @brief æ ¡å‡†ç³»ç»Ÿåˆå§‹åŒ–
  */
 void Calibration_Init(void)
 {
-    // ´ÓEEPROM¼ÓÔØĞ£×¼Êı¾İ
+    // ä»EEPROMåŠ è½½æ ¡å‡†æ•°æ®
     Calibration_LoadFromEEPROM();
 
-    // ÖØÖÃĞ£×¼×´Ì¬
+    // é‡ç½®æ ¡å‡†çŠ¶æ€
     g_calibration_state.current_step = CAL_STEP_CONFIRM;
     g_calibration_state.cal_frequency = 14.0f;
     g_calibration_state.current_power_point = 0;
@@ -777,19 +777,19 @@ void Calibration_Init(void)
 }
 
 /**
- * @brief ´ÓEEPROM¼ÓÔØĞ£×¼Êı¾İ
+ * @brief ä»EEPROMåŠ è½½æ ¡å‡†æ•°æ®
  *
- * EEPROMµØÖ·²¼¾Ö (Ö§³Ö0W-2kW¹¦ÂÊ·¶Î§):
- * 0x0010-0x0017: ÁãµãÆ«ÒÆÊı¾İ (8×Ö½Ú)
- * 0x0020-0x011F: ÕıÏò¹¦ÂÊĞ£×¼±í (20µã¡Á8×Ö½Ú=160×Ö½Ú)
- * 0x0120-0x021F: ·´Éä¹¦ÂÊĞ£×¼±í (20µã¡Á8×Ö½Ú=160×Ö½Ú)
- * 0x0220-0x0221: Ğ£×¼µãÊı (2×Ö½Ú)
- * 0x0300-0x030B: ÆµÂÊÔöÒæĞŞÕı (3¡Á4×Ö½Ú=12×Ö½Ú)
- * 0x0400-0x0407: ÆµÂÊÎ¢µ÷ºÍ±êÖ¾ (8×Ö½Ú)
+ * EEPROMåœ°å€å¸ƒå±€ (æ”¯æŒ0W-2kWåŠŸç‡èŒƒå›´):
+ * 0x0010-0x0017: é›¶ç‚¹åç§»æ•°æ® (8å­—èŠ‚)
+ * 0x0020-0x011F: æ­£å‘åŠŸç‡æ ¡å‡†è¡¨ (20ç‚¹Ã—8å­—èŠ‚=160å­—èŠ‚)
+ * 0x0120-0x021F: åå°„åŠŸç‡æ ¡å‡†è¡¨ (20ç‚¹Ã—8å­—èŠ‚=160å­—èŠ‚)
+ * 0x0220-0x0221: æ ¡å‡†ç‚¹æ•° (2å­—èŠ‚)
+ * 0x0300-0x030B: é¢‘ç‡å¢ç›Šä¿®æ­£ (3Ã—4å­—èŠ‚=12å­—èŠ‚)
+ * 0x0400-0x0407: é¢‘ç‡å¾®è°ƒå’Œæ ‡å¿— (8å­—èŠ‚)
  */
 void Calibration_LoadFromEEPROM(void)
 {
-    // ¶ÁÈ¡ÁãµãÆ«ÒÆ
+    // è¯»å–é›¶ç‚¹åç§»
     if (BL24C16_Read(0x0010, (uint8_t*)&g_calibration_data.forward_offset, sizeof(float)) != EEPROM_OK) {
         g_calibration_data.forward_offset = 0.0f;
     }
@@ -797,28 +797,28 @@ void Calibration_LoadFromEEPROM(void)
         g_calibration_data.reflected_offset = 0.0f;
     }
 
-    // ¶ÁÈ¡ÕıÏò¹¦ÂÊĞ£×¼±í (20¸öµã£¬Ã¿¸öµã8×Ö½Ú£¬¹²160×Ö½Ú)
-    // ·Ö¿é¶ÁÈ¡ÒÔ±ÜÃâµ¥´Î¶ÁÈ¡¹ı¶àÊı¾İ
+    // è¯»å–æ­£å‘åŠŸç‡æ ¡å‡†è¡¨ (20ä¸ªç‚¹ï¼Œæ¯ä¸ªç‚¹8å­—èŠ‚ï¼Œå…±160å­—èŠ‚)
+    // åˆ†å—è¯»å–ä»¥é¿å…å•æ¬¡è¯»å–è¿‡å¤šæ•°æ®
     for (int i = 0; i < 20; i++) {
         uint16_t addr = 0x0020 + i * sizeof(PowerCalPoint_t);
         if (BL24C16_Read(addr, (uint8_t*)&g_calibration_data.fwd_table[i], sizeof(PowerCalPoint_t)) != EEPROM_OK) {
-            // Ê¹ÓÃÄ¬ÈÏÖµ (0V=0W, 2V=2kWµÄÏßĞÔ¹ØÏµ)
+            // ä½¿ç”¨é»˜è®¤å€¼ (0V=0W, 2V=2kWçš„çº¿æ€§å…³ç³»)
             g_calibration_data.fwd_table[i].power = power_cal_points[i];
-            g_calibration_data.fwd_table[i].voltage = power_cal_points[i] / 1000.0f;  // 1000W/VÏµÊı
+            g_calibration_data.fwd_table[i].voltage = power_cal_points[i] / 1000.0f;  // 1000W/Vç³»æ•°
         }
     }
 
-    // ¶ÁÈ¡·´Éä¹¦ÂÊĞ£×¼±í (µØÖ·´Ó0x0120¿ªÊ¼£¬±ÜÃâÓëÕıÏò±í³åÍ»)
+    // è¯»å–åå°„åŠŸç‡æ ¡å‡†è¡¨ (åœ°å€ä»0x0120å¼€å§‹ï¼Œé¿å…ä¸æ­£å‘è¡¨å†²çª)
     for (int i = 0; i < 20; i++) {
         uint16_t addr = 0x0120 + i * sizeof(PowerCalPoint_t);
         if (BL24C16_Read(addr, (uint8_t*)&g_calibration_data.ref_table[i], sizeof(PowerCalPoint_t)) != EEPROM_OK) {
-            // Ê¹ÓÃÄ¬ÈÏÖµ (0V=0W, 2V=2kWµÄÏßĞÔ¹ØÏµ)
+            // ä½¿ç”¨é»˜è®¤å€¼ (0V=0W, 2V=2kWçš„çº¿æ€§å…³ç³»)
             g_calibration_data.ref_table[i].power = power_cal_points[i];
-            g_calibration_data.ref_table[i].voltage = power_cal_points[i] / 1000.0f;  // 1000W/VÏµÊı
+            g_calibration_data.ref_table[i].voltage = power_cal_points[i] / 1000.0f;  // 1000W/Vç³»æ•°
         }
     }
 
-    // ¶ÁÈ¡Ğ£×¼µãÊı (µ÷ÕûµØÖ·±ÜÃâÓëĞ£×¼±í³åÍ»)
+    // è¯»å–æ ¡å‡†ç‚¹æ•° (è°ƒæ•´åœ°å€é¿å…ä¸æ ¡å‡†è¡¨å†²çª)
     if (BL24C16_Read(0x0220, &g_calibration_data.fwd_points, 1) != EEPROM_OK) {
         g_calibration_data.fwd_points = 0;
     }
@@ -826,7 +826,7 @@ void Calibration_LoadFromEEPROM(void)
         g_calibration_data.ref_points = 0;
     }
 
-    // ¶ÁÈ¡ÆµÂÊÔöÒæĞŞÕıÏµÊı
+    // è¯»å–é¢‘ç‡å¢ç›Šä¿®æ­£ç³»æ•°
     if (BL24C16_Read(0x0300, (uint8_t*)&g_calibration_data.freq_gain_fwd, sizeof(float)) != EEPROM_OK) {
         g_calibration_data.freq_gain_fwd = 1.0f;
     }
@@ -834,10 +834,10 @@ void Calibration_LoadFromEEPROM(void)
         g_calibration_data.freq_gain_ref = 1.0f;
     }
     if (BL24C16_Read(0x0308, (uint8_t*)&g_calibration_data.cal_frequency, sizeof(float)) != EEPROM_OK) {
-        g_calibration_data.cal_frequency = 14.0f;  // Ä¬ÈÏ14MHz
+        g_calibration_data.cal_frequency = 14.0f;  // é»˜è®¤14MHz
     }
 
-    // ÑéÖ¤ÆµÂÊÔöÒæÊı¾İÓĞĞ§ĞÔ
+    // éªŒè¯é¢‘ç‡å¢ç›Šæ•°æ®æœ‰æ•ˆæ€§
     if (g_calibration_data.freq_gain_fwd < 0.1f || g_calibration_data.freq_gain_fwd > 10.0f ||
         isnan(g_calibration_data.freq_gain_fwd) || isinf(g_calibration_data.freq_gain_fwd)) {
         g_calibration_data.freq_gain_fwd = 1.0f;
@@ -849,24 +849,24 @@ void Calibration_LoadFromEEPROM(void)
 
     }
 
-    // ¶ÁÈ¡ÆµÂÊÎ¢µ÷ (µ÷ÕûµØÖ·±ÜÃâ³åÍ»)
+    // è¯»å–é¢‘ç‡å¾®è°ƒ (è°ƒæ•´åœ°å€é¿å…å†²çª)
     if (BL24C16_Read(0x0400, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float)) != EEPROM_OK) {
         g_calibration_data.freq_trim = 1.0f;
     }
 
-    // ÑéÖ¤freq_trimÊı¾İÓĞĞ§ĞÔ£¬·ÀÖ¹EEPROMËğ»µ
+    // éªŒè¯freq_trimæ•°æ®æœ‰æ•ˆæ€§ï¼Œé˜²æ­¢EEPROMæŸå
     if (g_calibration_data.freq_trim < 0.1f || g_calibration_data.freq_trim > 10.0f ||
         isnan(g_calibration_data.freq_trim) || isinf(g_calibration_data.freq_trim)) {
-        g_calibration_data.freq_trim = 1.0f;  // ÖØÖÃÎª°²È«Ä¬ÈÏÖµ
+        g_calibration_data.freq_trim = 1.0f;  // é‡ç½®ä¸ºå®‰å…¨é»˜è®¤å€¼
 
     }
 
-    // ¶ÁÈ¡Ğ£×¼Íê³É±êÖ¾
+    // è¯»å–æ ¡å‡†å®Œæˆæ ‡å¿—
     if (BL24C16_Read(0x0404, &g_calibration_data.is_calibrated, 1) != EEPROM_OK) {
         g_calibration_data.is_calibrated = 0;
     }
 
-    // Ò»´ÎĞÔÇå³ıËğ»µµÄEEPROMÊı¾İ£¨ÁÙÊ±ĞŞ¸´£©
+    // ä¸€æ¬¡æ€§æ¸…é™¤æŸåçš„EEPROMæ•°æ®ï¼ˆä¸´æ—¶ä¿®å¤ï¼‰
     static uint8_t eeprom_cleared = 0;
     if (!eeprom_cleared) {
 
@@ -875,7 +875,7 @@ void Calibration_LoadFromEEPROM(void)
         g_calibration_data.freq_gain_ref = 1.0f;
         g_calibration_data.cal_frequency = 14.0f;
 
-        // ±£´æÕıÈ·µÄÊı¾İµ½EEPROM
+        // ä¿å­˜æ­£ç¡®çš„æ•°æ®åˆ°EEPROM
         BL24C16_Write(0x0400, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float));
         BL24C16_Write(0x0300, (uint8_t*)&g_calibration_data.freq_gain_fwd, sizeof(float));
         BL24C16_Write(0x0304, (uint8_t*)&g_calibration_data.freq_gain_ref, sizeof(float));
@@ -889,41 +889,41 @@ void Calibration_LoadFromEEPROM(void)
 }
 
 /**
- * @brief ±£´æĞ£×¼Êı¾İµ½EEPROM
+ * @brief ä¿å­˜æ ¡å‡†æ•°æ®åˆ°EEPROM
  */
 void Calibration_SaveToEEPROM(void)
 {
-    // ±£´æÁãµãÆ«ÒÆ
+    // ä¿å­˜é›¶ç‚¹åç§»
     BL24C16_Write(0x0010, (uint8_t*)&g_calibration_data.forward_offset, sizeof(float));
     BL24C16_Write(0x0014, (uint8_t*)&g_calibration_data.reflected_offset, sizeof(float));
 
-    // ±£´æÕıÏò¹¦ÂÊĞ£×¼±í (·Ö¿é±£´æÒÔÈ·±£¿É¿¿ĞÔ)
+    // ä¿å­˜æ­£å‘åŠŸç‡æ ¡å‡†è¡¨ (åˆ†å—ä¿å­˜ä»¥ç¡®ä¿å¯é æ€§)
     for (int i = 0; i < 20; i++) {
         uint16_t addr = 0x0020 + i * sizeof(PowerCalPoint_t);
         BL24C16_Write(addr, (uint8_t*)&g_calibration_data.fwd_table[i], sizeof(PowerCalPoint_t));
-        HAL_Delay(5);  // Ğ´Èë¼ä¸ô£¬È·±£EEPROMĞ´ÈëÍê³É
+        HAL_Delay(5);  // å†™å…¥é—´éš”ï¼Œç¡®ä¿EEPROMå†™å…¥å®Œæˆ
     }
 
-    // ±£´æ·´Éä¹¦ÂÊĞ£×¼±í (µØÖ·´Ó0x0120¿ªÊ¼)
+    // ä¿å­˜åå°„åŠŸç‡æ ¡å‡†è¡¨ (åœ°å€ä»0x0120å¼€å§‹)
     for (int i = 0; i < 20; i++) {
         uint16_t addr = 0x0120 + i * sizeof(PowerCalPoint_t);
         BL24C16_Write(addr, (uint8_t*)&g_calibration_data.ref_table[i], sizeof(PowerCalPoint_t));
-        HAL_Delay(5);  // Ğ´Èë¼ä¸ô£¬È·±£EEPROMĞ´ÈëÍê³É
+        HAL_Delay(5);  // å†™å…¥é—´éš”ï¼Œç¡®ä¿EEPROMå†™å…¥å®Œæˆ
     }
 
-    // ±£´æĞ£×¼µãÊı (Ê¹ÓÃĞÂµØÖ·)
+    // ä¿å­˜æ ¡å‡†ç‚¹æ•° (ä½¿ç”¨æ–°åœ°å€)
     BL24C16_Write(0x0220, &g_calibration_data.fwd_points, 1);
     BL24C16_Write(0x0221, &g_calibration_data.ref_points, 1);
 
-    // ±£´æÆµÂÊÔöÒæĞŞÕıÏµÊı
+    // ä¿å­˜é¢‘ç‡å¢ç›Šä¿®æ­£ç³»æ•°
     BL24C16_Write(0x0300, (uint8_t*)&g_calibration_data.freq_gain_fwd, sizeof(float));
     BL24C16_Write(0x0304, (uint8_t*)&g_calibration_data.freq_gain_ref, sizeof(float));
     BL24C16_Write(0x0308, (uint8_t*)&g_calibration_data.cal_frequency, sizeof(float));
 
-    // ±£´æÆµÂÊÎ¢µ÷ (Ê¹ÓÃĞÂµØÖ·)
+    // ä¿å­˜é¢‘ç‡å¾®è°ƒ (ä½¿ç”¨æ–°åœ°å€)
     BL24C16_Write(0x0400, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float));
 
-    // ±£´æĞ£×¼Íê³É±êÖ¾
+    // ä¿å­˜æ ¡å‡†å®Œæˆæ ‡å¿—
     g_calibration_data.is_calibrated = 1;
     BL24C16_Write(0x0404, &g_calibration_data.is_calibrated, 1);
 }
@@ -931,31 +931,31 @@ void Calibration_SaveToEEPROM(void)
 
 
 /**
- * @brief ²é±í¼ÆËã¹¦ÂÊ£¨ÏßĞÔ²åÖµ£¬ÓÅ»¯Ö§³Ö0W-2kW·¶Î§£©
+ * @brief æŸ¥è¡¨è®¡ç®—åŠŸç‡ï¼ˆçº¿æ€§æ’å€¼ï¼Œä¼˜åŒ–æ”¯æŒ0W-2kWèŒƒå›´ï¼‰
  */
 float Calibration_CalculatePowerFromTable(float voltage, PowerCalPoint_t* table, uint8_t points)
 {
     if (points == 0) {
-        return 0.0f;  // ÎŞĞ£×¼Êı¾İ
+        return 0.0f;  // æ— æ ¡å‡†æ•°æ®
     }
 
-    // ´¦Àí0WÇé¿ö£ºµçÑ¹½Ó½ü0Ê±·µ»Ø0¹¦ÂÊ
-    if (voltage <= 0.001f) {  // 1mVÒÔÏÂÈÏÎªÊÇ0¹¦ÂÊ
+    // å¤„ç†0Wæƒ…å†µï¼šç”µå‹æ¥è¿‘0æ—¶è¿”å›0åŠŸç‡
+    if (voltage <= 0.001f) {  // 1mVä»¥ä¸‹è®¤ä¸ºæ˜¯0åŠŸç‡
         return 0.0f;
     }
 
-    // Èç¹ûµçÑ¹Ğ¡ÓÚµÚÒ»¸öĞ£×¼µã£¬Ê¹ÓÃµÚÒ»¸öµãµÄĞ±ÂÊÍâÍÆ
+    // å¦‚æœç”µå‹å°äºç¬¬ä¸€ä¸ªæ ¡å‡†ç‚¹ï¼Œä½¿ç”¨ç¬¬ä¸€ä¸ªç‚¹çš„æ–œç‡å¤–æ¨
     if (voltage <= table[0].voltage) {
         if (points >= 2) {
             float slope = (table[1].power - table[0].power) / (table[1].voltage - table[0].voltage);
             float extrapolated_power = table[0].power + slope * (voltage - table[0].voltage);
-            return (extrapolated_power > 0.0f) ? extrapolated_power : 0.0f;  // È·±£²»·µ»Ø¸º¹¦ÂÊ
+            return (extrapolated_power > 0.0f) ? extrapolated_power : 0.0f;  // ç¡®ä¿ä¸è¿”å›è´ŸåŠŸç‡
         } else {
-            return table[0].power * (voltage / table[0].voltage);  // ÏßĞÔ±ÈÀı
+            return table[0].power * (voltage / table[0].voltage);  // çº¿æ€§æ¯”ä¾‹
         }
     }
 
-    // Èç¹ûµçÑ¹´óÓÚ×îºóÒ»¸öµã£¬Ê¹ÓÃ×îºóÁ½¸öµãµÄĞ±ÂÊÍâÍÆ£¨Ö§³Ö2kWÒÔÉÏ£©
+    // å¦‚æœç”µå‹å¤§äºæœ€åä¸€ä¸ªç‚¹ï¼Œä½¿ç”¨æœ€åä¸¤ä¸ªç‚¹çš„æ–œç‡å¤–æ¨ï¼ˆæ”¯æŒ2kWä»¥ä¸Šï¼‰
     if (voltage >= table[points-1].voltage) {
         if (points >= 2) {
             float slope = (table[points-1].power - table[points-2].power) /
@@ -966,7 +966,7 @@ float Calibration_CalculatePowerFromTable(float voltage, PowerCalPoint_t* table,
         }
     }
 
-    // ÔÚ±í¸ñ·¶Î§ÄÚ£¬ÕÒµ½¶ÔÓ¦Çø¼ä½øĞĞÏßĞÔ²åÖµ
+    // åœ¨è¡¨æ ¼èŒƒå›´å†…ï¼Œæ‰¾åˆ°å¯¹åº”åŒºé—´è¿›è¡Œçº¿æ€§æ’å€¼
     for (uint8_t i = 0; i < points - 1; i++) {
         if (voltage >= table[i].voltage && voltage <= table[i+1].voltage) {
             float ratio = (voltage - table[i].voltage) / (table[i+1].voltage - table[i].voltage);
@@ -974,26 +974,26 @@ float Calibration_CalculatePowerFromTable(float voltage, PowerCalPoint_t* table,
         }
     }
 
-    return 0.0f;  // ²»Ó¦¸Ãµ½´ïÕâÀï
+    return 0.0f;  // ä¸åº”è¯¥åˆ°è¾¾è¿™é‡Œ
 }
 
 /**
- * @brief Ó¦ÓÃĞ£×¼ĞŞÕı£¨ĞÂµÄ²é±í·½Ê½£©
+ * @brief åº”ç”¨æ ¡å‡†ä¿®æ­£ï¼ˆæ–°çš„æŸ¥è¡¨æ–¹å¼ï¼‰
  */
 float Calibration_ApplyCorrection(float raw_voltage, uint8_t is_forward, float frequency)
 {
     if (!g_calibration_data.is_calibrated) {
-        // Î´Ğ£×¼Ê±Ê¹ÓÃ¼òµ¥ÏßĞÔ×ª»» (0V=0W, 2V=2kW)
+        // æœªæ ¡å‡†æ—¶ä½¿ç”¨ç®€å•çº¿æ€§è½¬æ¢ (0V=0W, 2V=2kW)
         return (raw_voltage - (is_forward ? g_calibration_data.forward_offset : g_calibration_data.reflected_offset)) * 1000.0f;
     }
 
-    // È¥³ıÁãµãÆ«ÒÆ
+    // å»é™¤é›¶ç‚¹åç§»
     float corrected_voltage = raw_voltage - (is_forward ? g_calibration_data.forward_offset : g_calibration_data.reflected_offset);
     if (corrected_voltage < 0.0f) {
         corrected_voltage = 0.0f;
     }
 
-    // ²é±í¼ÆËã¹¦ÂÊ
+    // æŸ¥è¡¨è®¡ç®—åŠŸç‡
     float base_power;
     if (is_forward) {
         base_power = Calibration_CalculatePowerFromTable(corrected_voltage, g_calibration_data.fwd_table, g_calibration_data.fwd_points);
@@ -1001,30 +1001,30 @@ float Calibration_ApplyCorrection(float raw_voltage, uint8_t is_forward, float f
         base_power = Calibration_CalculatePowerFromTable(corrected_voltage, g_calibration_data.ref_table, g_calibration_data.ref_points);
     }
 
-    // Ó¦ÓÃÆµÂÊÔöÒæĞŞÕı
+    // åº”ç”¨é¢‘ç‡å¢ç›Šä¿®æ­£
     float final_power = base_power * (is_forward ? g_calibration_data.freq_gain_fwd : g_calibration_data.freq_gain_ref);
 
     return (final_power > 0.0f) ? final_power : 0.0f;
 }
 
 /**
- * @brief ¼ÆËã¹¦ÂÊ£¨¼ò»¯½Ó¿Ú£¬×Ô¶¯»ñÈ¡µ±Ç°ÆµÂÊ£©
+ * @brief è®¡ç®—åŠŸç‡ï¼ˆç®€åŒ–æ¥å£ï¼Œè‡ªåŠ¨è·å–å½“å‰é¢‘ç‡ï¼‰
  */
 float Calibration_CalculatePower(float voltage, uint8_t is_forward)
 {
-    // ÁÙÊ±µ÷ÊÔ£ºÖ±½Óµ÷ÓÃ²é±íº¯Êı£¬Ìø¹ıÆµÂÊĞŞÕı
+    // ä¸´æ—¶è°ƒè¯•ï¼šç›´æ¥è°ƒç”¨æŸ¥è¡¨å‡½æ•°ï¼Œè·³è¿‡é¢‘ç‡ä¿®æ­£
     if (!g_calibration_data.is_calibrated) {
-        // Î´Ğ£×¼Ê±Ê¹ÓÃ¼òµ¥ÏßĞÔ×ª»» (0V=0W, 2V=2kW)
+        // æœªæ ¡å‡†æ—¶ä½¿ç”¨ç®€å•çº¿æ€§è½¬æ¢ (0V=0W, 2V=2kW)
         return (voltage - (is_forward ? g_calibration_data.forward_offset : g_calibration_data.reflected_offset)) * 1000.0f;
     }
 
-    // È¥³ıÁãµãÆ«ÒÆ
+    // å»é™¤é›¶ç‚¹åç§»
     float corrected_voltage = voltage - (is_forward ? g_calibration_data.forward_offset : g_calibration_data.reflected_offset);
     if (corrected_voltage < 0.0f) {
         corrected_voltage = 0.0f;
     }
 
-    // Ö±½Ó²é±í¼ÆËã¹¦ÂÊ£¬ÔİÊ±²»Ó¦ÓÃÆµÂÊÔöÒæĞŞÕı
+    // ç›´æ¥æŸ¥è¡¨è®¡ç®—åŠŸç‡ï¼Œæš‚æ—¶ä¸åº”ç”¨é¢‘ç‡å¢ç›Šä¿®æ­£
     float base_power;
     if (is_forward) {
         base_power = Calibration_CalculatePowerFromTable(corrected_voltage, g_calibration_data.fwd_table, g_calibration_data.fwd_points);
@@ -1036,7 +1036,7 @@ float Calibration_CalculatePower(float voltage, uint8_t is_forward)
 }
 
 /**
- * @brief ¿ªÊ¼Ğ£×¼²½Öè
+ * @brief å¼€å§‹æ ¡å‡†æ­¥éª¤
  */
 void Calibration_StartStep(CalibrationStep_t step)
 {
@@ -1044,7 +1044,7 @@ void Calibration_StartStep(CalibrationStep_t step)
     g_calibration_state.sample_count = 0;
     g_calibration_state.sample_sum_fwd = 0.0f;
     g_calibration_state.sample_sum_ref = 0.0f;
-    g_calibration_state.sample_completed = 0;  // ÖØÖÃÍê³É±êÖ¾
+    g_calibration_state.sample_completed = 0;  // é‡ç½®å®Œæˆæ ‡å¿—
     g_calibration_state.is_stable = 0;
     g_calibration_state.stable_count = 0;
 
@@ -1052,34 +1052,34 @@ void Calibration_StartStep(CalibrationStep_t step)
 }
 
 /**
- * @brief ³õÊ¼»¯¹¦ÂÊ±ê¶¨£¨Ö»ÔÚ¿ªÊ¼Ê±µ÷ÓÃÒ»´Î£©
+ * @brief åˆå§‹åŒ–åŠŸç‡æ ‡å®šï¼ˆåªåœ¨å¼€å§‹æ—¶è°ƒç”¨ä¸€æ¬¡ï¼‰
  */
 void Calibration_InitPowerStep(void)
 {
     g_calibration_state.current_power_point = 0;
-    g_calibration_state.current_channel = 0;  // ´ÓÕıÏò¹¦ÂÊ¿ªÊ¼
+    g_calibration_state.current_channel = 0;  // ä»æ­£å‘åŠŸç‡å¼€å§‹
     g_calibration_state.target_power = power_cal_points[0];  // 100W
     g_calibration_state.power_cal_mode = 0;
 }
 
 /**
- * @brief ³õÊ¼»¯ÆµÂÊ±ê¶¨£¨Ö»ÔÚ¿ªÊ¼Ê±µ÷ÓÃÒ»´Î£©
+ * @brief åˆå§‹åŒ–é¢‘ç‡æ ‡å®šï¼ˆåªåœ¨å¼€å§‹æ—¶è°ƒç”¨ä¸€æ¬¡ï¼‰
  */
 void Calibration_InitBandStep(void)
 {
-    g_calibration_state.cal_frequency = 14.0f;  // Ä¬ÈÏ14MHz
-    g_calibration_state.target_power = 100.0f;  // ÆµÂÊ±ê¶¨Ê¹ÓÃ¹Ì¶¨¹¦ÂÊ
+    g_calibration_state.cal_frequency = 14.0f;  // é»˜è®¤14MHz
+    g_calibration_state.target_power = 100.0f;  // é¢‘ç‡æ ‡å®šä½¿ç”¨å›ºå®šåŠŸç‡
 }
 
 /**
- * @brief ¶ÁÈ¡ADCµçÑ¹Öµ
+ * @brief è¯»å–ADCç”µå‹å€¼
  */
 static void Calibration_ReadADCVoltage(float* fwd_voltage, float* ref_voltage)
 {
-    // Æô¶¯ADC×ª»»²¢¶ÁÈ¡Öµ
+    // å¯åŠ¨ADCè½¬æ¢å¹¶è¯»å–å€¼
     extern ADC_HandleTypeDef hadc1;
 
-    // ÅäÖÃ²¢¶ÁÈ¡Channel 2 (PA2ÕıÏò¹¦ÂÊ)
+    // é…ç½®å¹¶è¯»å–Channel 2 (PA2æ­£å‘åŠŸç‡)
     ADC_ChannelConfTypeDef sConfig = {0};
     sConfig.Channel = ADC_CHANNEL_2;
     sConfig.Rank = ADC_REGULAR_RANK_1;
@@ -1091,7 +1091,7 @@ static void Calibration_ReadADCVoltage(float* fwd_voltage, float* ref_voltage)
     uint32_t adc_forward = HAL_ADC_GetValue(&hadc1);
     HAL_ADC_Stop(&hadc1);
 
-    // ÅäÖÃ²¢¶ÁÈ¡Channel 3 (PA3·´Éä¹¦ÂÊ)
+    // é…ç½®å¹¶è¯»å–Channel 3 (PA3åå°„åŠŸç‡)
     sConfig.Channel = ADC_CHANNEL_3;
     HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
@@ -1100,15 +1100,15 @@ static void Calibration_ReadADCVoltage(float* fwd_voltage, float* ref_voltage)
     uint32_t adc_reflected = HAL_ADC_GetValue(&hadc1);
     HAL_ADC_Stop(&hadc1);
 
-    // ×ª»»ÎªµçÑ¹Öµ (2.5V²Î¿¼µçÑ¹£¬12Î»ADC)
+    // è½¬æ¢ä¸ºç”µå‹å€¼ (2.5Vå‚è€ƒç”µå‹ï¼Œ12ä½ADC)
     *fwd_voltage = (float)adc_forward * 2.5f / 4095.0f;
     *ref_voltage = (float)adc_reflected * 2.5f / 4095.0f;
 }
 
 /**
- * @brief ÏÔÊ¾ADCµ÷ÊÔĞÅÏ¢£¨ÓÃÓÚĞ£×¼½çÃæ£©
- * @param x: X×ø±êÎ»ÖÃ
- * @param y: Y×ø±êÆğÊ¼Î»ÖÃ
+ * @brief æ˜¾ç¤ºADCè°ƒè¯•ä¿¡æ¯ï¼ˆç”¨äºæ ¡å‡†ç•Œé¢ï¼‰
+ * @param x: Xåæ ‡ä½ç½®
+ * @param y: Yåæ ‡èµ·å§‹ä½ç½®
  */
 static void Display_ADCInfo(uint16_t x, uint16_t y)
 {
@@ -1116,10 +1116,10 @@ static void Display_ADCInfo(uint16_t x, uint16_t y)
     uint32_t adc_forward, adc_reflected;
     float fwd_voltage, ref_voltage;
 
-    // Æô¶¯ADC×ª»»²¢¶ÁÈ¡Öµ
+    // å¯åŠ¨ADCè½¬æ¢å¹¶è¯»å–å€¼
     extern ADC_HandleTypeDef hadc1;
 
-    // ÅäÖÃ²¢¶ÁÈ¡Channel 2 (PA2ÕıÏò¹¦ÂÊ)
+    // é…ç½®å¹¶è¯»å–Channel 2 (PA2æ­£å‘åŠŸç‡)
     ADC_ChannelConfTypeDef sConfig = {0};
     sConfig.Channel = ADC_CHANNEL_2;
     sConfig.Rank = ADC_REGULAR_RANK_1;
@@ -1131,7 +1131,7 @@ static void Display_ADCInfo(uint16_t x, uint16_t y)
     adc_forward = HAL_ADC_GetValue(&hadc1);
     HAL_ADC_Stop(&hadc1);
 
-    // ÅäÖÃ²¢¶ÁÈ¡Channel 3 (PA3·´Éä¹¦ÂÊ)
+    // é…ç½®å¹¶è¯»å–Channel 3 (PA3åå°„åŠŸç‡)
     sConfig.Channel = ADC_CHANNEL_3;
     HAL_ADC_ConfigChannel(&hadc1, &sConfig);
 
@@ -1140,18 +1140,18 @@ static void Display_ADCInfo(uint16_t x, uint16_t y)
     adc_reflected = HAL_ADC_GetValue(&hadc1);
     HAL_ADC_Stop(&hadc1);
 
-    // ×ª»»ÎªµçÑ¹Öµ (2.5V²Î¿¼µçÑ¹£¬12Î»ADC)
+    // è½¬æ¢ä¸ºç”µå‹å€¼ (2.5Vå‚è€ƒç”µå‹ï¼Œ12ä½ADC)
     fwd_voltage = (float)adc_forward * 2.5f / 4095.0f;
     ref_voltage = (float)adc_reflected * 2.5f / 4095.0f;
 
-    // ÏÔÊ¾ADCÔ­Ê¼Öµ
+    // æ˜¾ç¤ºADCåŸå§‹å€¼
     sprintf(str_buffer, "F:%4d", (int)adc_forward);
     Show_Str(x, y, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 
     sprintf(str_buffer, "R:%4d", (int)adc_reflected);
     Show_Str(x, y + 15, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // ÏÔÊ¾µçÑ¹Öµ
+    // æ˜¾ç¤ºç”µå‹å€¼
     sprintf(str_buffer, "%5.2fV", fwd_voltage);
     Show_Str(x, y + 30, GRAY, BLACK, (uint8_t*)str_buffer, 12, 0);
 
@@ -1160,22 +1160,22 @@ static void Display_ADCInfo(uint16_t x, uint16_t y)
 }
 
 /**
- * @brief ´¦ÀíĞ£×¼²ÉÑù
+ * @brief å¤„ç†æ ¡å‡†é‡‡æ ·
  */
 void Calibration_ProcessSample(void)
 {
     static float last_fwd = 0.0f;
     static float last_ref = 0.0f;
 
-    // »ñÈ¡µ±Ç°ADCµçÑ¹Öµ
+    // è·å–å½“å‰ADCç”µå‹å€¼
     float current_fwd, current_ref;
     Calibration_ReadADCVoltage(&current_fwd, &current_ref);
 
-    // ÎÈ¶¨ĞÔ¼ì²â£¨±ä»¯Ğ¡ÓÚ5%ÈÏÎªÎÈ¶¨£©
+    // ç¨³å®šæ€§æ£€æµ‹ï¼ˆå˜åŒ–å°äº5%è®¤ä¸ºç¨³å®šï¼‰
     if (fabs(current_fwd - last_fwd) < 0.05f * last_fwd &&
         fabs(current_ref - last_ref) < 0.05f * last_ref) {
         g_calibration_state.stable_count++;
-        if (g_calibration_state.stable_count >= 10) {  // ÎÈ¶¨1Ãë£¨100ms¡Á10£©
+        if (g_calibration_state.stable_count >= 10) {  // ç¨³å®š1ç§’ï¼ˆ100msÃ—10ï¼‰
             g_calibration_state.is_stable = 1;
         }
     } else {
@@ -1186,32 +1186,32 @@ void Calibration_ProcessSample(void)
     last_fwd = current_fwd;
     last_ref = current_ref;
 
-    // Èç¹ûÕıÔÚ²ÉÑù£¬ÀÛ¼ÆÊı¾İ
+    // å¦‚æœæ­£åœ¨é‡‡æ ·ï¼Œç´¯è®¡æ•°æ®
     if (g_calibration_state.sample_count > 0) {
         g_calibration_state.sample_sum_fwd += current_fwd;
         g_calibration_state.sample_sum_ref += current_ref;
         g_calibration_state.sample_count++;
 
-        // ²ÉÑùÍê³É£¨10´Î£©
+        // é‡‡æ ·å®Œæˆï¼ˆ10æ¬¡ï¼‰
         if (g_calibration_state.sample_count >= 10) {
-            // ĞŞ¸´£ºÊµ¼Ê²ÉÑù´ÎÊıÊÇsample_count-1´Î£¨´Ó1¿ªÊ¼¼ÆÊı£©
+            // ä¿®å¤ï¼šå®é™…é‡‡æ ·æ¬¡æ•°æ˜¯sample_count-1æ¬¡ï¼ˆä»1å¼€å§‹è®¡æ•°ï¼‰
             uint8_t actual_samples = g_calibration_state.sample_count - 1;
             float avg_fwd = g_calibration_state.sample_sum_fwd / (float)actual_samples;
             float avg_ref = g_calibration_state.sample_sum_ref / (float)actual_samples;
 
             printf("Actual samples taken: %d\r\n", actual_samples);
 
-            // ÉèÖÃÍê³É±êÖ¾£¬ÏÔÊ¾Íê³ÉÌáÊ¾
+            // è®¾ç½®å®Œæˆæ ‡å¿—ï¼Œæ˜¾ç¤ºå®Œæˆæç¤º
             g_calibration_state.sample_completed = 1;
             g_interface_manager.need_refresh = 1;
 
-            // ´®¿Úµ÷ÊÔÊä³ö²ÉÑù½á¹û
+            // ä¸²å£è°ƒè¯•è¾“å‡ºé‡‡æ ·ç»“æœ
             printf("\r\n=== Calibration Sample Complete ===\r\n");
             printf("Step: %d\r\n", g_calibration_state.current_step);
             printf("Average Forward: %.3fV\r\n", avg_fwd);
             printf("Average Reflected: %.3fV\r\n", avg_ref);
 
-            // ¸ù¾İµ±Ç°²½Öè´¦Àí²ÉÑù½á¹û
+            // æ ¹æ®å½“å‰æ­¥éª¤å¤„ç†é‡‡æ ·ç»“æœ
             switch (g_calibration_state.current_step) {
                 case CAL_STEP_ZERO:
                     g_calibration_data.forward_offset = avg_fwd;
@@ -1219,19 +1219,19 @@ void Calibration_ProcessSample(void)
 
                     printf("Zero calibration: Fwd=%.3fV, Ref=%.3fV\r\n", avg_fwd, avg_ref);
 
-                    // ±£´æÁãµãÊı¾İµ½EEPROM
+                    // ä¿å­˜é›¶ç‚¹æ•°æ®åˆ°EEPROM
                     Calibration_SaveToEEPROM();
 
-                    InterfaceManager_Beep(200);  // ³É¹¦ÌáÊ¾Òô
+                    InterfaceManager_Beep(200);  // æˆåŠŸæç¤ºéŸ³
 
-                    // ÑÓ³Ùºó½øÈëÏÂÒ»²½»ò·µ»ØÑ¡Ôñ½çÃæ
-                    HAL_Delay(1000);  // ÏÔÊ¾Íê³ÉÌáÊ¾1Ãë
+                    // å»¶è¿Ÿåè¿›å…¥ä¸‹ä¸€æ­¥æˆ–è¿”å›é€‰æ‹©ç•Œé¢
+                    HAL_Delay(1000);  // æ˜¾ç¤ºå®Œæˆæç¤º1ç§’
                     if (g_calibration_state.is_single_step) {
-                        // µ¥²½±ê¶¨Íê³É£¬·µ»Ø²½ÖèÑ¡Ôñ½çÃæ
+                        // å•æ­¥æ ‡å®šå®Œæˆï¼Œè¿”å›æ­¥éª¤é€‰æ‹©ç•Œé¢
                         InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
                     } else {
-                        // ÍêÕû±ê¶¨£¬¼ÌĞøÏÂÒ»²½£º¹¦ÂÊĞ£×¼
-                        Calibration_InitPowerStep();  // ³õÊ¼»¯¹¦ÂÊ±ê¶¨×´Ì¬
+                        // å®Œæ•´æ ‡å®šï¼Œç»§ç»­ä¸‹ä¸€æ­¥ï¼šåŠŸç‡æ ¡å‡†
+                        Calibration_InitPowerStep();  // åˆå§‹åŒ–åŠŸç‡æ ‡å®šçŠ¶æ€
                         Calibration_StartStep(CAL_STEP_POWER);
                         InterfaceManager_SwitchTo(INTERFACE_CAL_POWER);
                     }
@@ -1239,11 +1239,11 @@ void Calibration_ProcessSample(void)
 
                 case CAL_STEP_POWER:
                     {
-                        // ¶àµã¹¦ÂÊĞ£×¼
+                        // å¤šç‚¹åŠŸç‡æ ¡å‡†
                         uint8_t point = g_calibration_state.current_power_point;
                         uint8_t channel = g_calibration_state.current_channel;
 
-                        if (channel == 0) {  // ÕıÏò¹¦ÂÊĞ£×¼
+                        if (channel == 0) {  // æ­£å‘åŠŸç‡æ ¡å‡†
                             float corrected_voltage = avg_fwd - g_calibration_data.forward_offset;
                             g_calibration_data.fwd_table[point].power = g_calibration_state.target_power;
                             g_calibration_data.fwd_table[point].voltage = corrected_voltage;
@@ -1251,7 +1251,7 @@ void Calibration_ProcessSample(void)
 
                             printf("Forward Power Cal P%d: %.0fW @ %.3fV (Raw=%.3fV, Offset=%.3fV)\r\n",
                                    point, g_calibration_state.target_power, corrected_voltage, avg_fwd, g_calibration_data.forward_offset);
-                        } else {  // ·´Éä¹¦ÂÊĞ£×¼
+                        } else {  // åå°„åŠŸç‡æ ¡å‡†
                             float corrected_voltage = avg_ref - g_calibration_data.reflected_offset;
                             g_calibration_data.ref_table[point].power = g_calibration_state.target_power;
                             g_calibration_data.ref_table[point].voltage = corrected_voltage;
@@ -1262,38 +1262,38 @@ void Calibration_ProcessSample(void)
                         }
                         InterfaceManager_Beep(200);
 
-                        // ±£´æµ±Ç°±ê¶¨µãµ½EEPROM
+                        // ä¿å­˜å½“å‰æ ‡å®šç‚¹åˆ°EEPROM
                         Calibration_SaveToEEPROM();
 
-                        // ÑÓ³ÙÏÔÊ¾Íê³ÉÌáÊ¾
-                        HAL_Delay(800);  // ÏÔÊ¾Íê³ÉÌáÊ¾0.8Ãë
+                        // å»¶è¿Ÿæ˜¾ç¤ºå®Œæˆæç¤º
+                        HAL_Delay(800);  // æ˜¾ç¤ºå®Œæˆæç¤º0.8ç§’
 
-                        // ×Ô¶¯½øÈëÏÂÒ»¸öĞ£×¼µã
-                        if (channel == 0) {  // ÕıÏò¹¦ÂÊĞ£×¼
-                            if (point < 19) {  // »¹ÓĞ¸ü¶àÕıÏòµã
+                        // è‡ªåŠ¨è¿›å…¥ä¸‹ä¸€ä¸ªæ ¡å‡†ç‚¹
+                        if (channel == 0) {  // æ­£å‘åŠŸç‡æ ¡å‡†
+                            if (point < 19) {  // è¿˜æœ‰æ›´å¤šæ­£å‘ç‚¹
                                 g_calibration_state.current_power_point++;
                                 g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
-                                Calibration_StartStep(CAL_STEP_POWER);  // ÖØÖÃ²ÉÑù×´Ì¬
+                                Calibration_StartStep(CAL_STEP_POWER);  // é‡ç½®é‡‡æ ·çŠ¶æ€
                             } else {
-                                // ÇĞ»»µ½·´Éä¹¦ÂÊĞ£×¼
+                                // åˆ‡æ¢åˆ°åå°„åŠŸç‡æ ¡å‡†
                                 g_calibration_state.current_channel = 1;
                                 g_calibration_state.current_power_point = 0;
                                 g_calibration_state.target_power = power_cal_points[0];
-                                Calibration_StartStep(CAL_STEP_POWER);  // ÖØÖÃ²ÉÑù×´Ì¬
+                                Calibration_StartStep(CAL_STEP_POWER);  // é‡ç½®é‡‡æ ·çŠ¶æ€
                             }
-                        } else {  // ·´Éä¹¦ÂÊĞ£×¼
-                            if (point < 19) {  // »¹ÓĞ¸ü¶à·´Éäµã
+                        } else {  // åå°„åŠŸç‡æ ¡å‡†
+                            if (point < 19) {  // è¿˜æœ‰æ›´å¤šåå°„ç‚¹
                                 g_calibration_state.current_power_point++;
                                 g_calibration_state.target_power = power_cal_points[g_calibration_state.current_power_point];
-                                Calibration_StartStep(CAL_STEP_POWER);  // ÖØÖÃ²ÉÑù×´Ì¬
+                                Calibration_StartStep(CAL_STEP_POWER);  // é‡ç½®é‡‡æ ·çŠ¶æ€
                             } else {
-                                // Íê³É¹¦ÂÊĞ£×¼
+                                // å®ŒæˆåŠŸç‡æ ¡å‡†
                                 if (g_calibration_state.is_single_step) {
-                                    // µ¥²½±ê¶¨Íê³É£¬·µ»Ø²½ÖèÑ¡Ôñ½çÃæ
+                                    // å•æ­¥æ ‡å®šå®Œæˆï¼Œè¿”å›æ­¥éª¤é€‰æ‹©ç•Œé¢
                                     InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
                                 } else {
-                                    // ÍêÕû±ê¶¨£¬½øÈëÏÂÒ»²½
-                                    Calibration_InitBandStep();  // ³õÊ¼»¯ÆµÂÊ±ê¶¨×´Ì¬
+                                    // å®Œæ•´æ ‡å®šï¼Œè¿›å…¥ä¸‹ä¸€æ­¥
+                                    Calibration_InitBandStep();  // åˆå§‹åŒ–é¢‘ç‡æ ‡å®šçŠ¶æ€
                                     Calibration_StartStep(CAL_STEP_BAND);
                                     InterfaceManager_SwitchTo(INTERFACE_CAL_BAND);
                                 }
@@ -1305,7 +1305,7 @@ void Calibration_ProcessSample(void)
 
                 case CAL_STEP_BAND:
                     {
-                        // Ê¹ÓÃ²é±í·½Ê½¼ÆËã»ù×¼¹¦ÂÊ
+                        // ä½¿ç”¨æŸ¥è¡¨æ–¹å¼è®¡ç®—åŸºå‡†åŠŸç‡
                         float base_fwd = Calibration_CalculatePowerFromTable(avg_fwd - g_calibration_data.forward_offset,
                                                                             g_calibration_data.fwd_table,
                                                                             g_calibration_data.fwd_points);
@@ -1313,7 +1313,7 @@ void Calibration_ProcessSample(void)
                                                                             g_calibration_data.ref_table,
                                                                             g_calibration_data.ref_points);
 
-                        // ¼ÆËãÆµÂÊÔöÒæĞŞÕıÏµÊı
+                        // è®¡ç®—é¢‘ç‡å¢ç›Šä¿®æ­£ç³»æ•°
                         if (base_fwd > 0.0f) {
                             g_calibration_data.freq_gain_fwd = g_calibration_state.target_power / base_fwd;
                         }
@@ -1321,17 +1321,17 @@ void Calibration_ProcessSample(void)
                             g_calibration_data.freq_gain_ref = g_calibration_state.target_power / base_ref;
                         }
 
-                        // ±£´æ±ê¶¨ÆµÂÊ
+                        // ä¿å­˜æ ‡å®šé¢‘ç‡
                         g_calibration_data.cal_frequency = g_calibration_state.cal_frequency;
 
-                        // ¼ÆËãÆµÂÊÎ¢µ÷ÏµÊı
+                        // è®¡ç®—é¢‘ç‡å¾®è°ƒç³»æ•°
                         extern FreqResult_t g_freq_result;
                         if (g_freq_result.is_valid) {
-                            // µ±Ç°²âÁ¿µÄÔ­Ê¼ÆµÂÊ£¨Hz£©£¬Ê¹ÓÃµ±Ç°µÄÎ¢µ÷ÏµÊı
+                            // å½“å‰æµ‹é‡çš„åŸå§‹é¢‘ç‡ï¼ˆHzï¼‰ï¼Œä½¿ç”¨å½“å‰çš„å¾®è°ƒç³»æ•°
                             float current_measured_hz = (float)g_freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim;
-                            // Ä¿±êÆµÂÊ£¨Hz£©
+                            // ç›®æ ‡é¢‘ç‡ï¼ˆHzï¼‰
                             float target_freq_hz = g_calibration_state.cal_frequency * 1000000.0f;
-                            // ¼ÆËãĞÂµÄÎ¢µ÷ÏµÊı£ºµ±Ç°Î¢µ÷ ¡Á (Ä¿±êÆµÂÊ / µ±Ç°ÏÔÊ¾ÆµÂÊ)
+                            // è®¡ç®—æ–°çš„å¾®è°ƒç³»æ•°ï¼šå½“å‰å¾®è°ƒ Ã— (ç›®æ ‡é¢‘ç‡ / å½“å‰æ˜¾ç¤ºé¢‘ç‡)
                             if (current_measured_hz > 0.0f) {
                                 float correction_factor = target_freq_hz / current_measured_hz;
                                 g_calibration_data.freq_trim = g_calibration_data.freq_trim * correction_factor;
@@ -1341,16 +1341,16 @@ void Calibration_ProcessSample(void)
 
                         InterfaceManager_Beep(200);
 
-                        // ÑÓ³ÙÏÔÊ¾Íê³ÉÌáÊ¾
-                        HAL_Delay(1000);  // ÏÔÊ¾Íê³ÉÌáÊ¾1Ãë
+                        // å»¶è¿Ÿæ˜¾ç¤ºå®Œæˆæç¤º
+                        HAL_Delay(1000);  // æ˜¾ç¤ºå®Œæˆæç¤º1ç§’
 
-                        // ÆµÂÊ±ê¶¨Íê³É£¬±£´æÊı¾İ
+                        // é¢‘ç‡æ ‡å®šå®Œæˆï¼Œä¿å­˜æ•°æ®
                         Calibration_SaveToEEPROM();
                         if (g_calibration_state.is_single_step) {
-                            // µ¥²½±ê¶¨Íê³É£¬·µ»Ø²½ÖèÑ¡Ôñ½çÃæ
+                            // å•æ­¥æ ‡å®šå®Œæˆï¼Œè¿”å›æ­¥éª¤é€‰æ‹©ç•Œé¢
                             InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
                         } else {
-                            // ÍêÕû±ê¶¨Íê³É
+                            // å®Œæ•´æ ‡å®šå®Œæˆ
                             Calibration_StartStep(CAL_STEP_COMPLETE);
                             InterfaceManager_SwitchTo(INTERFACE_CAL_COMPLETE);
                         }
@@ -1363,7 +1363,7 @@ void Calibration_ProcessSample(void)
                     break;
             }
 
-            // ÖØÖÃ²ÉÑù×´Ì¬
+            // é‡ç½®é‡‡æ ·çŠ¶æ€
             g_calibration_state.sample_count = 0;
             g_calibration_state.sample_sum_fwd = 0.0f;
             g_calibration_state.sample_sum_ref = 0.0f;
@@ -1372,10 +1372,10 @@ void Calibration_ProcessSample(void)
     }
 }
 
-/* ========== Ğ£×¼½çÃæÏÔÊ¾º¯Êı ========== */
+/* ========== æ ¡å‡†ç•Œé¢æ˜¾ç¤ºå‡½æ•° ========== */
 
 /**
- * @brief ÏÔÊ¾Ğ£×¼È·ÈÏÒ³
+ * @brief æ˜¾ç¤ºæ ¡å‡†ç¡®è®¤é¡µ
  */
 void Interface_DisplayCalConfirm(void)
 {
@@ -1393,11 +1393,11 @@ void Interface_DisplayCalConfirm(void)
 }
 
 /**
- * @brief ÏÔÊ¾ÁãµãĞ£×¼
+ * @brief æ˜¾ç¤ºé›¶ç‚¹æ ¡å‡†
  */
 void Interface_DisplayCalZero(void)
 {
-    // Ê×´Î½øÈëÊ±ÇåÆÁ£¬·ÀÖ¹²ĞÁô
+    // é¦–æ¬¡è¿›å…¥æ—¶æ¸…å±ï¼Œé˜²æ­¢æ®‹ç•™
     if (g_interface_manager.interface_first_enter) {
         g_interface_manager.interface_first_enter = 0;
         LCD_Clear(BLACK);
@@ -1420,7 +1420,7 @@ void Interface_DisplayCalZero(void)
         Show_Str(10, 92, GREEN, BLACK, (uint8_t*)"Ready to sample ", 12, 0);
     }
 
-    // ÏÔÊ¾ADCµ÷ÊÔĞÅÏ¢
+    // æ˜¾ç¤ºADCè°ƒè¯•ä¿¡æ¯
     Display_ADCInfo(115, 30);
 
 
@@ -1429,7 +1429,7 @@ void Interface_DisplayCalZero(void)
 }
 
 /**
- * @brief ÏÔÊ¾¹¦ÂÊĞ£×¼
+ * @brief æ˜¾ç¤ºåŠŸç‡æ ¡å‡†
  */
 void Interface_DisplayCalPower(void)
 {
@@ -1440,7 +1440,7 @@ void Interface_DisplayCalPower(void)
 
     Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 2/3:", 12, 0);
 
-    // ÏÔÊ¾µ±Ç°Ğ£×¼Í¨µÀºÍµã
+    // æ˜¾ç¤ºå½“å‰æ ¡å‡†é€šé“å’Œç‚¹
     if (g_calibration_state.current_channel == 0) {
         sprintf(str_buffer, "FWD Point %2d/20 ", g_calibration_state.current_power_point + 1);
     } else {
@@ -1448,12 +1448,12 @@ void Interface_DisplayCalPower(void)
     }
     Show_Str(10, 45, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // ÏÔÊ¾µ±Ç°Ğ£×¼µãĞÅÏ¢
+    // æ˜¾ç¤ºå½“å‰æ ¡å‡†ç‚¹ä¿¡æ¯
     const char* channel_name = (g_calibration_state.current_channel == 0) ? "Fwd" : "Ref";
     sprintf(str_buffer, "Point %2d/20 (%s)  ", g_calibration_state.current_power_point + 1, channel_name);
     Show_Str(10, 60, CYAN, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // ÏÔÊ¾Ä¿±ê¹¦ÂÊ£¬Ö§³ÖkWµ¥Î»£¬¹Ì¶¨¿í¶È·ÀÖ¹²ĞÁô
+    // æ˜¾ç¤ºç›®æ ‡åŠŸç‡ï¼Œæ”¯æŒkWå•ä½ï¼Œå›ºå®šå®½åº¦é˜²æ­¢æ®‹ç•™
     if (g_calibration_state.target_power >= 1000.0f) {
         sprintf(str_buffer, "Target: %4.1fkW  ", g_calibration_state.target_power / 1000.0f);
     } else {
@@ -1476,14 +1476,14 @@ void Interface_DisplayCalPower(void)
         Show_Str(100, 103, YELLOW, BLACK, (uint8_t*)progress, 12, 0);
     }
 
-    // ÏÔÊ¾ADCµ÷ÊÔĞÅÏ¢
+    // æ˜¾ç¤ºADCè°ƒè¯•ä¿¡æ¯
     Display_ADCInfo(119, 30);
 
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Prev DOWN:Next OK:Cal", 12, 0);
 }
 
 /**
- * @brief ÏÔÊ¾ÆµÂÊ±ê¶¨
+ * @brief æ˜¾ç¤ºé¢‘ç‡æ ‡å®š
  */
 void Interface_DisplayCalBand(void)
 {
@@ -1494,14 +1494,14 @@ void Interface_DisplayCalBand(void)
 
     Show_Str(10, 30, CYAN, BLACK, (uint8_t*)"Step 3/3:", 12, 0);
 
-    // ÏÔÊ¾±ê¶¨ÆµÂÊ
+    // æ˜¾ç¤ºæ ‡å®šé¢‘ç‡
     sprintf(str_buffer, "Cal: %5.1f MHz    ", g_calibration_state.cal_frequency);
     Show_Str(10, 45, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // ÏÔÊ¾Êµ¼Ê²âÁ¿ÆµÂÊ£¨Ó¦ÓÃ16±¶²¹³¥ºÍÎ¢µ÷£©
+    // æ˜¾ç¤ºå®é™…æµ‹é‡é¢‘ç‡ï¼ˆåº”ç”¨16å€è¡¥å¿å’Œå¾®è°ƒï¼‰
     extern FreqResult_t g_freq_result;
     if (g_freq_result.is_valid) {
-        // ¼ÆËãÕæÊµÆµÂÊ£ºÔ­Ê¼Öµ ¡Á 16±¶²¹³¥ ¡Á Î¢µ÷ÏµÊı
+        // è®¡ç®—çœŸå®é¢‘ç‡ï¼šåŸå§‹å€¼ Ã— 16å€è¡¥å¿ Ã— å¾®è°ƒç³»æ•°
         float real_freq_hz = (float)g_freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim;
 
         if (real_freq_hz >= 1000000.0f) {  // >= 1MHz
@@ -1533,7 +1533,7 @@ void Interface_DisplayCalBand(void)
         Show_Str(100, 88, YELLOW, BLACK, (uint8_t*)progress, 12, 0);
     }
 
-    // ÏÔÊ¾ADCµ÷ÊÔĞÅÏ¢
+    // æ˜¾ç¤ºADCè°ƒè¯•ä¿¡æ¯
     //Display_ADCInfo(122, 30);
 
     Show_Str(5, 103, GRAY, BLACK, (uint8_t*)"DOWN:Freq(1-50MHz)   ", 12, 0);
@@ -1543,7 +1543,7 @@ void Interface_DisplayCalBand(void)
 
 
 /**
- * @brief ÏÔÊ¾Ğ£×¼Íê³É
+ * @brief æ˜¾ç¤ºæ ¡å‡†å®Œæˆ
  */
 void Interface_DisplayCalComplete(void)
 {
@@ -1560,41 +1560,41 @@ void Interface_DisplayCalComplete(void)
 }
 
 /**
- * @brief Ö÷½çÃæÏÔÊ¾
+ * @brief ä¸»ç•Œé¢æ˜¾ç¤º
  */
 void Interface_DisplayMain(void)
 {
     char str_buffer[32];
     uint16_t vswr_color;
 
-    // ÏÔÊ¾±êÌâ
-    Show_Str(20, 5, WHITE, BLACK, (uint8_t*)"RF Power Meter", 16, 0); //ÉäÆµ¹¦ÂÊ¼Æ±êÌâ
+    // æ˜¾ç¤ºæ ‡é¢˜
+    Show_Str(20, 5, WHITE, BLACK, (uint8_t*)"RF Power Meter", 16, 0); //å°„é¢‘åŠŸç‡è®¡æ ‡é¢˜
 
-    // »æÖÆ·Ö¸îÏß
-    LCD_DrawLine(0, 25, LCD_W - 1, 25); //Ë®Æ½·Ö¸îÏß
-    LCD_DrawLine(80, 25, 80, 95); //´¹Ö±·Ö¸îÏß
+    // ç»˜åˆ¶åˆ†å‰²çº¿
+    LCD_DrawLine(0, 25, LCD_W - 1, 25); //æ°´å¹³åˆ†å‰²çº¿
+    LCD_DrawLine(80, 25, 80, 95); //å‚ç›´åˆ†å‰²çº¿
 
-    // ×ó²àÏÔÊ¾¹¦ÂÊĞÅÏ¢
-    Show_Str(5, 30, CYAN, BLACK, (uint8_t*)"Forward:", 12, 0); //ÕıÏò¹¦ÂÊ±êÇ©
+    // å·¦ä¾§æ˜¾ç¤ºåŠŸç‡ä¿¡æ¯
+    Show_Str(5, 30, CYAN, BLACK, (uint8_t*)"Forward:", 12, 0); //æ­£å‘åŠŸç‡æ ‡ç­¾
     if (g_power_result.is_valid) {
         sprintf(str_buffer, "%5.0fW", g_power_result.forward_power);
-        Show_Str(5, 45, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //ÕıÏò¹¦ÂÊÊıÖµ
+        Show_Str(5, 45, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //æ­£å‘åŠŸç‡æ•°å€¼
     } else {
-        Show_Str(5, 45, GRAY, BLACK, (uint8_t*)"   --W", 12, 0); //ÕıÏò¹¦ÂÊÎŞĞ§ÏÔÊ¾
+        Show_Str(5, 45, GRAY, BLACK, (uint8_t*)"   --W", 12, 0); //æ­£å‘åŠŸç‡æ— æ•ˆæ˜¾ç¤º
     }
 
-    Show_Str(5, 60, CYAN, BLACK, (uint8_t*)"Reflect:", 12, 0); //·´Éä¹¦ÂÊ±êÇ©
+    Show_Str(5, 60, CYAN, BLACK, (uint8_t*)"Reflect:", 12, 0); //åå°„åŠŸç‡æ ‡ç­¾
     if (g_power_result.is_valid) {
         sprintf(str_buffer, "%5.0fW", g_power_result.reflected_power);
-        Show_Str(5, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //·´Éä¹¦ÂÊÊıÖµ
+        Show_Str(5, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //åå°„åŠŸç‡æ•°å€¼
     } else {
-        Show_Str(5, 75, GRAY, BLACK, (uint8_t*)"   --W", 12, 0); //·´Éä¹¦ÂÊÎŞĞ§ÏÔÊ¾
+        Show_Str(5, 75, GRAY, BLACK, (uint8_t*)"   --W", 12, 0); //åå°„åŠŸç‡æ— æ•ˆæ˜¾ç¤º
     }
 
-    // ÓÒ²àÏÔÊ¾ÉäÆµ²ÎÊı
-    Show_Str(85, 30, CYAN, BLACK, (uint8_t*)"VSWR:", 12, 0); //×¤²¨±È±êÇ©
+    // å³ä¾§æ˜¾ç¤ºå°„é¢‘å‚æ•°
+    Show_Str(85, 30, CYAN, BLACK, (uint8_t*)"VSWR:", 12, 0); //é©»æ³¢æ¯”æ ‡ç­¾
     if (g_rf_params.is_valid) {
-        // ¸ù¾İVSWRÖµÑ¡ÔñÑÕÉ«
+        // æ ¹æ®VSWRå€¼é€‰æ‹©é¢œè‰²
         switch (g_rf_params.vswr_color) {
             case VSWR_COLOR_GREEN:  vswr_color = GREEN; break;
             case VSWR_COLOR_YELLOW: vswr_color = YELLOW; break;
@@ -1602,67 +1602,67 @@ void Interface_DisplayMain(void)
             default:                vswr_color = WHITE; break;
         }
 
-        // ÏÈÇå¿ÕÏÔÊ¾ÇøÓò
+        // å…ˆæ¸…ç©ºæ˜¾ç¤ºåŒºåŸŸ
         //Show_Str(85, 45, BLACK, BLACK, (uint8_t*)"      ", 12, 0);
 
-        // ÌØÊâ´¦ÀíÎŞÇî´óÇé¿ö£¬Ìí¼ÓÖÍ»Ø·ÀÖ¹ÉÁË¸
+        // ç‰¹æ®Šå¤„ç†æ— ç©·å¤§æƒ…å†µï¼Œæ·»åŠ æ»å›é˜²æ­¢é—ªçƒ
         static uint8_t vswr_is_inf = 0;
         if (g_rf_params.vswr >= 999.0f) {
-            vswr_is_inf = 1;  // ÉèÖÃÎŞÇî´ó±êÖ¾
+            vswr_is_inf = 1;  // è®¾ç½®æ— ç©·å¤§æ ‡å¿—
         } else if (g_rf_params.vswr <= 50.0f) {
-            vswr_is_inf = 0;  // Ö»ÓĞµ±VSWR½µµ½50ÒÔÏÂ²ÅÇå³ı±êÖ¾
+            vswr_is_inf = 0;  // åªæœ‰å½“VSWRé™åˆ°50ä»¥ä¸‹æ‰æ¸…é™¤æ ‡å¿—
         }
 
         if (vswr_is_inf) {
-            sprintf(str_buffer, "%6s", "INF");  // ÏÔÊ¾ÎŞÇî´ó£¬¹Ì¶¨¿í¶È
+            sprintf(str_buffer, "%6s", "INF");  // æ˜¾ç¤ºæ— ç©·å¤§ï¼Œå›ºå®šå®½åº¦
         } else {
-            sprintf(str_buffer, "%6.2f", g_rf_params.vswr);  // ¹Ì¶¨¿í¶È6×Ö·û
+            sprintf(str_buffer, "%6.2f", g_rf_params.vswr);  // å›ºå®šå®½åº¦6å­—ç¬¦
         }
-        Show_Str(85, 45, vswr_color, BLACK, (uint8_t*)str_buffer, 12, 0); //×¤²¨±ÈÊıÖµ(´øÑÕÉ«)
+        Show_Str(85, 45, vswr_color, BLACK, (uint8_t*)str_buffer, 12, 0); //é©»æ³¢æ¯”æ•°å€¼(å¸¦é¢œè‰²)
     } else {
-        Show_Str(85, 45, GRAY, BLACK, (uint8_t*)"    --", 12, 0); //×¤²¨±ÈÎŞĞ§ÏÔÊ¾
+        Show_Str(85, 45, GRAY, BLACK, (uint8_t*)"    --", 12, 0); //é©»æ³¢æ¯”æ— æ•ˆæ˜¾ç¤º
     }
 
-    Show_Str(85, 60, CYAN, BLACK, (uint8_t*)"Refl.Coef:", 12, 0); //·´ÉäÏµÊı±êÇ©
+    Show_Str(85, 60, CYAN, BLACK, (uint8_t*)"Refl.Coef:", 12, 0); //åå°„ç³»æ•°æ ‡ç­¾
     if (g_rf_params.is_valid) {
         sprintf(str_buffer, "%5.3f", g_rf_params.reflection_coeff);
-        Show_Str(85, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //·´ÉäÏµÊıÊıÖµ
+        Show_Str(85, 75, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //åå°„ç³»æ•°æ•°å€¼
     } else {
-        Show_Str(85, 75, GRAY, BLACK, (uint8_t*)"   --", 12, 0); //·´ÉäÏµÊıÎŞĞ§ÏÔÊ¾
+        Show_Str(85, 75, GRAY, BLACK, (uint8_t*)"   --", 12, 0); //åå°„ç³»æ•°æ— æ•ˆæ˜¾ç¤º
     }
 
-    // µ×²¿ÏÔÊ¾´«ÊäĞ§ÂÊºÍÆµÂÊ
-    LCD_DrawLine(0, 95, LCD_W - 1, 95); //µ×²¿·Ö¸îÏß
+    // åº•éƒ¨æ˜¾ç¤ºä¼ è¾“æ•ˆç‡å’Œé¢‘ç‡
+    LCD_DrawLine(0, 95, LCD_W - 1, 95); //åº•éƒ¨åˆ†å‰²çº¿
 
-    Show_Str(5, 100, CYAN, BLACK, (uint8_t*)"Efficiency:", 12, 0); //´«ÊäĞ§ÂÊ±êÇ©
+    Show_Str(5, 100, CYAN, BLACK, (uint8_t*)"Efficiency:", 12, 0); //ä¼ è¾“æ•ˆç‡æ ‡ç­¾
     if (g_rf_params.is_valid) {
         sprintf(str_buffer, "%5.1f%%", g_rf_params.transmission_eff);
-        Show_Str(70, 100, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //´«ÊäĞ§ÂÊÊıÖµ
+        Show_Str(70, 100, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //ä¼ è¾“æ•ˆç‡æ•°å€¼
     } else {
-        Show_Str(70, 100, GRAY, BLACK, (uint8_t*)"   --%", 12, 0); //´«ÊäĞ§ÂÊÎŞĞ§ÏÔÊ¾
+        Show_Str(70, 100, GRAY, BLACK, (uint8_t*)"   --%", 12, 0); //ä¼ è¾“æ•ˆç‡æ— æ•ˆæ˜¾ç¤º
     }
 
-    Show_Str(5, 115, CYAN, BLACK, (uint8_t*)"Freq:", 12, 0); //ÆµÂÊ±êÇ©
+    Show_Str(5, 115, CYAN, BLACK, (uint8_t*)"Freq:", 12, 0); //é¢‘ç‡æ ‡ç­¾
     FreqResult_t freq_result;
     if (FreqCounter_GetResult(&freq_result) == 0) {
-        // Ê¹ÓÃÔ­Ê¼frequency_hzÖµ£¬Ó¦ÓÃ16±¶²¹³¥ºÍÆµÂÊÎ¢µ÷
-        float freq_hz = (float)freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim;  // Êµ¼ÊÆµÂÊ(Hz)
+        // ä½¿ç”¨åŸå§‹frequency_hzå€¼ï¼Œåº”ç”¨16å€è¡¥å¿å’Œé¢‘ç‡å¾®è°ƒ
+        float freq_hz = (float)freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim;  // å®é™…é¢‘ç‡(Hz)
 
         if (freq_hz >= 1000000.0f) {  // >= 1MHz
             sprintf(str_buffer, "%4.6f MHz  ", freq_hz / 1000000.0f);
-        } else if (freq_hz >= 1000.0f) {  // >= 1kHz£¬ÏÔÊ¾ÎªkHz£¬3Î»Ğ¡Êı
+        } else if (freq_hz >= 1000.0f) {  // >= 1kHzï¼Œæ˜¾ç¤ºä¸ºkHzï¼Œ3ä½å°æ•°
             sprintf(str_buffer, "%4.3f kHz    ", freq_hz / 1000.0f);
         } else {  // < 1kHz
             sprintf(str_buffer, "%4.0f Hz     ", freq_hz);
         }
-        Show_Str(40, 115, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //ÆµÂÊÊıÖµ
+        Show_Str(40, 115, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //é¢‘ç‡æ•°å€¼
     } else {
-        Show_Str(40, 115, GRAY, BLACK, (uint8_t*)"      -- Hz", 12, 0); //ÆµÂÊÎŞĞ§ÏÔÊ¾
+        Show_Str(40, 115, GRAY, BLACK, (uint8_t*)"      -- Hz", 12, 0); //é¢‘ç‡æ— æ•ˆæ˜¾ç¤º
     }
 }
 
 /**
- * @brief ²Ëµ¥½çÃæÏÔÊ¾
+ * @brief èœå•ç•Œé¢æ˜¾ç¤º
  */
 void Interface_DisplayMenu(void)
 {
@@ -1675,25 +1675,25 @@ void Interface_DisplayMenu(void)
         "About"
     };
 
-    // ÏÔÊ¾±êÌâ
-    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Settings Menu", 16, 0); //ÉèÖÃ²Ëµ¥±êÌâ
-    LCD_DrawLine(0, 25, LCD_W - 1, 25); //±êÌâ·Ö¸îÏß
+    // æ˜¾ç¤ºæ ‡é¢˜
+    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Settings Menu", 16, 0); //è®¾ç½®èœå•æ ‡é¢˜
+    LCD_DrawLine(0, 25, LCD_W - 1, 25); //æ ‡é¢˜åˆ†å‰²çº¿
 
-    // ÏÔÊ¾²Ëµ¥Ïî
+    // æ˜¾ç¤ºèœå•é¡¹
     for (int i = 0; i < MAX_MENU_ITEMS - 1; i++) {
         uint16_t color = (i == g_interface_manager.menu_cursor) ? YELLOW : WHITE;
         uint16_t bg_color = (i == g_interface_manager.menu_cursor) ? BLUE : BLACK;
 
         sprintf(str_buffer, "> %s", menu_items[i]);
-        Show_Str(10, 28 + i * 18, color, bg_color, (uint8_t*)str_buffer, 16, 0); //²Ëµ¥Ïî(µ±Ç°Ñ¡ÖĞÎª»ÆÉ«±³¾°À¶É«)
+        Show_Str(10, 28 + i * 18, color, bg_color, (uint8_t*)str_buffer, 16, 0); //èœå•é¡¹(å½“å‰é€‰ä¸­ä¸ºé»„è‰²èƒŒæ™¯è“è‰²)
     }
 
-    // ÏÔÊ¾²Ù×÷ÌáÊ¾
-    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back DN:Next OK:Enter", 12, 0); //²Ù×÷ÌáÊ¾(ÒÑ×¢ÊÍ)
+    // æ˜¾ç¤ºæ“ä½œæç¤º
+    Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back DN:Next OK:Enter", 12, 0); //æ“ä½œæç¤º(å·²æ³¨é‡Š)
 }
 
 /**
- * @brief Ğ£×¼½çÃæÏÔÊ¾£¨Èë¿ÚÒ³Ãæ£©
+ * @brief æ ¡å‡†ç•Œé¢æ˜¾ç¤ºï¼ˆå…¥å£é¡µé¢ï¼‰
  */
 void Interface_DisplayCalibration(void)
 {
@@ -1715,11 +1715,11 @@ void Interface_DisplayCalibration(void)
 }
 
 /**
- * @brief ±ê¶¨²½ÖèÑ¡Ôñ½çÃæÏÔÊ¾
+ * @brief æ ‡å®šæ­¥éª¤é€‰æ‹©ç•Œé¢æ˜¾ç¤º
  */
 void Interface_DisplayCalStepSelect(void)
 {
-    // Ê×´Î½øÈëÊ±ÇåÆÁ£¬·ÀÖ¹²ĞÁô
+    // é¦–æ¬¡è¿›å…¥æ—¶æ¸…å±ï¼Œé˜²æ­¢æ®‹ç•™
     if (g_interface_manager.interface_first_enter) {
         g_interface_manager.interface_first_enter = 0;
         LCD_Clear(BLACK);
@@ -1728,7 +1728,7 @@ void Interface_DisplayCalStepSelect(void)
     Show_Str(25, 5, WHITE, BLACK, (uint8_t*)"Cal Select", 16, 0);
     LCD_DrawLine(0, 25, LCD_W - 1, 25);
 
-    // ÏÔÊ¾Ñ¡Ïî£¬µ±Ç°Ñ¡ÖĞÏî¸ßÁÁÏÔÊ¾
+    // æ˜¾ç¤ºé€‰é¡¹ï¼Œå½“å‰é€‰ä¸­é¡¹é«˜äº®æ˜¾ç¤º
     uint16_t sel_color = GREEN;
     uint16_t normal_color = WHITE;
 
@@ -1741,7 +1741,7 @@ void Interface_DisplayCalStepSelect(void)
     Show_Str(10, 80, (g_calibration_state.selected_step == 3) ? sel_color : normal_color,
              BLACK, (uint8_t*)"3. Freq Cal", 12, 0);
 
-    // ÏÔÊ¾µ±Ç°±ê¶¨×´Ì¬
+    // æ˜¾ç¤ºå½“å‰æ ‡å®šçŠ¶æ€
     Show_Str(10, 100, CYAN, BLACK, (uint8_t*)"Status:", 12, 0);
     if (g_calibration_data.is_calibrated) {
         Show_Str(60, 100, GREEN, BLACK, (uint8_t*)"CALIBRATED", 12, 0);
@@ -1753,16 +1753,16 @@ void Interface_DisplayCalStepSelect(void)
 }
 
 /**
- * @brief ±ê¶¨½çÃæÏÔÊ¾
+ * @brief æ ‡å®šç•Œé¢æ˜¾ç¤º
  */
 void Interface_DisplayStandard(void)
 {
     char str_buffer[32];
 
-    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Cal Debug", 16, 0); //Ğ£×¼µ÷ÊÔ±êÌâ
-    LCD_DrawLine(0, 25, LCD_W - 1, 25); //±êÌâ·Ö¸îÏß
+    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Cal Debug", 16, 0); //æ ¡å‡†è°ƒè¯•æ ‡é¢˜
+    LCD_DrawLine(0, 25, LCD_W - 1, 25); //æ ‡é¢˜åˆ†å‰²çº¿
 
-    // »ñÈ¡µ±Ç°ADCÖµºÍµçÑ¹½øĞĞÊµÊ±µ÷ÊÔ
+    // è·å–å½“å‰ADCå€¼å’Œç”µå‹è¿›è¡Œå®æ—¶è°ƒè¯•
     extern ADC_HandleTypeDef hadc1;
     ADC_ChannelConfTypeDef sConfig = {0};
     sConfig.Channel = ADC_CHANNEL_2;
@@ -1778,7 +1778,7 @@ void Interface_DisplayStandard(void)
     float corrected_voltage = raw_voltage - g_calibration_data.forward_offset;
     if (corrected_voltage < 0.0f) corrected_voltage = 0.0f;
 
-    // ´®¿Úµ÷ÊÔÊä³ö
+    // ä¸²å£è°ƒè¯•è¾“å‡º
     printf("\r\n=== Calibration Debug Info ===\r\n");
     printf("ADC Raw Value: %d\r\n", (int)adc_fwd);
     printf("Raw Voltage: %.3fV\r\n", raw_voltage);
@@ -1788,18 +1788,18 @@ void Interface_DisplayStandard(void)
     printf("Forward Points: %d/20\r\n", g_calibration_data.fwd_points);
     printf("Reflected Points: %d/20\r\n", g_calibration_data.ref_points);
 
-    // ÏÔÊ¾²é±í½á¹ûºÍĞ£×¼µãĞÅÏ¢
+    // æ˜¾ç¤ºæŸ¥è¡¨ç»“æœå’Œæ ¡å‡†ç‚¹ä¿¡æ¯
     if (g_calibration_data.fwd_points > 0) {
         float table_power = Calibration_CalculatePowerFromTable(corrected_voltage, g_calibration_data.fwd_table, g_calibration_data.fwd_points);
         printf("Table Lookup Result: %.0fW\r\n", table_power);
 
-        // ÏÔÊ¾Ç°¼¸¸öĞ£×¼µã
+        // æ˜¾ç¤ºå‰å‡ ä¸ªæ ¡å‡†ç‚¹
         printf("Calibration Points (First 5):\r\n");
         for (int i = 0; i < 5 && i < g_calibration_data.fwd_points; i++) {
             printf("  P%d: %.0fW @ %.3fV\r\n", i, g_calibration_data.fwd_table[i].power, g_calibration_data.fwd_table[i].voltage);
         }
 
-        // ÏÔÊ¾×îºó¼¸¸öĞ£×¼µã
+        // æ˜¾ç¤ºæœ€åå‡ ä¸ªæ ¡å‡†ç‚¹
         if (g_calibration_data.fwd_points > 5) {
             printf("Calibration Points (Last 5):\r\n");
             int start = (g_calibration_data.fwd_points > 5) ? g_calibration_data.fwd_points - 5 : 0;
@@ -1808,7 +1808,7 @@ void Interface_DisplayStandard(void)
             }
         }
 
-        // ²éÕÒ1.0V¸½½üµÄĞ£×¼µã
+        // æŸ¥æ‰¾1.0Vé™„è¿‘çš„æ ¡å‡†ç‚¹
         printf("Points near 1.0V:\r\n");
         for (int i = 0; i < g_calibration_data.fwd_points; i++) {
             if (g_calibration_data.fwd_table[i].voltage >= 0.8f && g_calibration_data.fwd_table[i].voltage <= 1.2f) {
@@ -1820,7 +1820,7 @@ void Interface_DisplayStandard(void)
     }
     printf("==============================\r\n\r\n");
 
-    // ÏÔÊ¾ÊµÊ±µ÷ÊÔĞÅÏ¢µ½ÆÁÄ»
+    // æ˜¾ç¤ºå®æ—¶è°ƒè¯•ä¿¡æ¯åˆ°å±å¹•
     sprintf(str_buffer, "ADC:%4d Raw:%4.3f", (int)adc_fwd, raw_voltage);
     Show_Str(10, 30, CYAN, BLACK, (uint8_t*)str_buffer, 12, 0);
 
@@ -1841,131 +1841,131 @@ void Interface_DisplayStandard(void)
     Show_Str(10, 90, WHITE, BLACK, (uint8_t*)"Check Serial Output", 12, 0);
     Show_Str(10, 105, WHITE, BLACK, (uint8_t*)"for detailed info", 12, 0);
 
-    Show_Str(10, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0); //·µ»ØÌáÊ¾
+    Show_Str(10, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0); //è¿”å›æç¤º
 }
 
 /**
- * @brief ±¨¾¯ÉèÖÃ½çÃæÏÔÊ¾
+ * @brief æŠ¥è­¦è®¾ç½®ç•Œé¢æ˜¾ç¤º
  */
 void Interface_DisplayAlarm(void)
 {
     char str_buffer[32];
 
-    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Alarm Limit", 16, 0); //³¬ÏŞ±¨¾¯±êÌâ
-    LCD_DrawLine(0, 25, LCD_W - 1, 25); //±êÌâ·Ö¸îÏß
+    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Alarm Limit", 16, 0); //è¶…é™æŠ¥è­¦æ ‡é¢˜
+    LCD_DrawLine(0, 25, LCD_W - 1, 25); //æ ‡é¢˜åˆ†å‰²çº¿
 
-    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"Alarm Setup:", 16, 0); //±¨¾¯ÉèÖÃ±êÇ©
+    Show_Str(10, 35, CYAN, BLACK, (uint8_t*)"Alarm Setup:", 16, 0); //æŠ¥è­¦è®¾ç½®æ ‡ç­¾
 
-    // ÏÔÊ¾±¨¾¯Ê¹ÄÜ×´Ì¬£¨´øÑ¡ÖĞÖ¸Ê¾£©
+    // æ˜¾ç¤ºæŠ¥è­¦ä½¿èƒ½çŠ¶æ€ï¼ˆå¸¦é€‰ä¸­æŒ‡ç¤ºï¼‰
     if (g_interface_manager.alarm_selected_item == 0) {
-        Show_Str(5, 55, GREEN, BLACK, (uint8_t*)">", 12, 0); //Ñ¡ÖĞÖ¸Ê¾·û
+        Show_Str(5, 55, GREEN, BLACK, (uint8_t*)">", 12, 0); //é€‰ä¸­æŒ‡ç¤ºç¬¦
     } else {
-        Show_Str(5, 55, BLACK, BLACK, (uint8_t*)" ", 12, 0); //Çå³ıÖ¸Ê¾·û
+        Show_Str(5, 55, BLACK, BLACK, (uint8_t*)" ", 12, 0); //æ¸…é™¤æŒ‡ç¤ºç¬¦
     }
     sprintf(str_buffer, "Alarm Enable: %3s", g_interface_manager.alarm_enabled ? "ON" : "OFF");
-    Show_Str(15, 55, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //±¨¾¯Ê¹ÄÜ×´Ì¬
+    Show_Str(15, 55, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //æŠ¥è­¦ä½¿èƒ½çŠ¶æ€
 
-    // ÏÔÊ¾VSWRãĞÖµ£¨ËÄÎ»Êı±à¼­Ä£Ê½£©
-    // ÏÔÊ¾VSWRÑ¡ÖĞÖ¸Ê¾·û
+    // æ˜¾ç¤ºVSWRé˜ˆå€¼ï¼ˆå››ä½æ•°ç¼–è¾‘æ¨¡å¼ï¼‰
+    // æ˜¾ç¤ºVSWRé€‰ä¸­æŒ‡ç¤ºç¬¦
     if (g_interface_manager.alarm_selected_item >= 1 && g_interface_manager.alarm_selected_item <= 4) {
-        Show_Str(5, 70, GREEN, BLACK, (uint8_t*)">", 12, 0); //VSWRÑ¡ÖĞÖ¸Ê¾·û
+        Show_Str(5, 70, GREEN, BLACK, (uint8_t*)">", 12, 0); //VSWRé€‰ä¸­æŒ‡ç¤ºç¬¦
     } else {
-        Show_Str(5, 70, BLACK, BLACK, (uint8_t*)" ", 12, 0); //Çå³ıÖ¸Ê¾·û
+        Show_Str(5, 70, BLACK, BLACK, (uint8_t*)" ", 12, 0); //æ¸…é™¤æŒ‡ç¤ºç¬¦
     }
 
     Show_Str(15, 70, WHITE, BLACK, (uint8_t*)"VSWR Limit: ", 12, 0);
 
-    // ·Ö½âVSWRÖµÎª¸÷¸öÎ»Êı£¨ĞŞ¸´¸¡µã¾«¶ÈÎÊÌâ£©
+    // åˆ†è§£VSWRå€¼ä¸ºå„ä¸ªä½æ•°ï¼ˆä¿®å¤æµ®ç‚¹ç²¾åº¦é—®é¢˜ï¼‰
     float current_value = g_interface_manager.vswr_alarm_threshold;
-    // ×ª»»ÎªÕûÊı±ÜÃâ¸¡µã¾«¶ÈÎÊÌâ
-    int total_tenths = (int)(current_value * 10.0f + 0.5f);  // ËÄÉáÎåÈëµ½0.1
+    // è½¬æ¢ä¸ºæ•´æ•°é¿å…æµ®ç‚¹ç²¾åº¦é—®é¢˜
+    int total_tenths = (int)(current_value * 10.0f + 0.5f);  // å››èˆäº”å…¥åˆ°0.1
 
     int hundreds = (total_tenths / 1000) % 10;
     int tens = (total_tenths / 100) % 10;
     int ones = (total_tenths / 10) % 10;
     int decimal = total_tenths % 10;
 
-    // ÏÔÊ¾°ÙÎ»£¨´øÑ¡ÖĞÖ¸Ê¾£©
+    // æ˜¾ç¤ºç™¾ä½ï¼ˆå¸¦é€‰ä¸­æŒ‡ç¤ºï¼‰
     uint16_t color_h = (g_interface_manager.alarm_selected_item == 1) ? GREEN : WHITE;
     sprintf(str_buffer, "%d", hundreds);
     Show_Str(106, 70, color_h, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // ÏÔÊ¾Ê®Î»£¨´øÑ¡ÖĞÖ¸Ê¾£©
+    // æ˜¾ç¤ºåä½ï¼ˆå¸¦é€‰ä¸­æŒ‡ç¤ºï¼‰
     uint16_t color_t = (g_interface_manager.alarm_selected_item == 2) ? GREEN : WHITE;
     sprintf(str_buffer, "%d", tens);
     Show_Str(112, 70, color_t, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // ÏÔÊ¾¸öÎ»£¨´øÑ¡ÖĞÖ¸Ê¾£©
+    // æ˜¾ç¤ºä¸ªä½ï¼ˆå¸¦é€‰ä¸­æŒ‡ç¤ºï¼‰
     uint16_t color_o = (g_interface_manager.alarm_selected_item == 3) ? GREEN : WHITE;
     sprintf(str_buffer, "%d", ones);
     Show_Str(118, 70, color_o, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    // ÏÔÊ¾Ğ¡Êıµã
+    // æ˜¾ç¤ºå°æ•°ç‚¹
     Show_Str(124, 70, WHITE, BLACK, (uint8_t*)".", 12, 0);
 
-    // ÏÔÊ¾Ğ¡ÊıÎ»£¨´øÑ¡ÖĞÖ¸Ê¾£©
+    // æ˜¾ç¤ºå°æ•°ä½ï¼ˆå¸¦é€‰ä¸­æŒ‡ç¤ºï¼‰
     uint16_t color_d = (g_interface_manager.alarm_selected_item == 4) ? GREEN : WHITE;
     sprintf(str_buffer, "%d", decimal);
     Show_Str(128, 70, color_d, BLACK, (uint8_t*)str_buffer, 12, 0);
 
-    Show_Str(10, 85, YELLOW, BLACK, (uint8_t*)"Buzzer when exceed", 12, 0); //³¬ÏŞ·äÃùÆ÷ÌáÊ¾
+    Show_Str(10, 85, YELLOW, BLACK, (uint8_t*)"Buzzer when exceed", 12, 0); //è¶…é™èœ‚é¸£å™¨æç¤º
 
-    Show_Str(5, 100, GRAY, BLACK, (uint8_t*)"DOWN:Switch OK:Edit", 12, 0); //²Ù×÷ÌáÊ¾
-    Show_Str(10, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0); //·µ»ØÌáÊ¾
+    Show_Str(5, 100, GRAY, BLACK, (uint8_t*)"DOWN:Switch OK:Edit", 12, 0); //æ“ä½œæç¤º
+    Show_Str(10, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0); //è¿”å›æç¤º
 }
 
 /**
- * @brief ÁÁ¶ÈÉèÖÃ½çÃæÏÔÊ¾
+ * @brief äº®åº¦è®¾ç½®ç•Œé¢æ˜¾ç¤º
  */
 void Interface_DisplayBrightness(void)
 {
     char str_buffer[32];
 
-    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Brightness", 16, 0); //ÏÔÊ¾ÁÁ¶È±êÌâ
-    LCD_DrawLine(0, 25, LCD_W - 1, 25); //±êÌâ·Ö¸îÏß
+    Show_Str(40, 5, WHITE, BLACK, (uint8_t*)"Brightness", 16, 0); //æ˜¾ç¤ºäº®åº¦æ ‡é¢˜
+    LCD_DrawLine(0, 25, LCD_W - 1, 25); //æ ‡é¢˜åˆ†å‰²çº¿
 
-    Show_Str(10, 32, CYAN, BLACK, (uint8_t*)"Backlight:", 16, 0); //±³¹âÁÁ¶È±êÇ©
+    Show_Str(10, 32, CYAN, BLACK, (uint8_t*)"Backlight:", 16, 0); //èƒŒå…‰äº®åº¦æ ‡ç­¾
 
-    // ÏÔÊ¾µ±Ç°ÁÁ¶È
+    // æ˜¾ç¤ºå½“å‰äº®åº¦
     sprintf(str_buffer, "Current: %02d0%%", g_interface_manager.brightness_level);
-    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //µ±Ç°ÁÁ¶È°Ù·Ö±È
+    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)str_buffer, 12, 0); //å½“å‰äº®åº¦ç™¾åˆ†æ¯”
 
-    // »æÖÆÁÁ¶ÈÌõ
-    LCD_DrawRectangle(10, 75, 139, 85); //ÁÁ¶ÈÌõ±ß¿ò
+    // ç»˜åˆ¶äº®åº¦æ¡
+    LCD_DrawRectangle(10, 75, 139, 85); //äº®åº¦æ¡è¾¹æ¡†
 
-    // ÏÈÇå³ı½ø¶ÈÌõÄÚ²¿ÇøÓò
-    //LCD_Fill(11, 76, 139, 84, BLACK); //Çå³ıÁÁ¶ÈÌõÄÚÈİ(ÒÑ×¢ÊÍ)
+    // å…ˆæ¸…é™¤è¿›åº¦æ¡å†…éƒ¨åŒºåŸŸ
+    //LCD_Fill(11, 76, 139, 84, BLACK); //æ¸…é™¤äº®åº¦æ¡å†…å®¹(å·²æ³¨é‡Š)
 
-    // ¼ÆËã²¢»æÖÆµ±Ç°ÁÁ¶ÈÌõ
-    uint16_t bar_width = g_interface_manager.brightness_level * 128 / 10;  // 128ÏñËØ¿í¶È (139-11)
+    // è®¡ç®—å¹¶ç»˜åˆ¶å½“å‰äº®åº¦æ¡
+    uint16_t bar_width = g_interface_manager.brightness_level * 128 / 10;  // 128åƒç´ å®½åº¦ (139-11)
     if (bar_width > 0) {
-        LCD_Fill(11, 76, 11 + bar_width - 1, 84, GREEN);  // »æÖÆÁÁ¶ÈÌõ
+        LCD_Fill(11, 76, 11 + bar_width - 1, 84, GREEN);  // ç»˜åˆ¶äº®åº¦æ¡
     }
 
-    Show_Str(10, 95, YELLOW, BLACK, (uint8_t*)"DN:Add OK:Confirm", 12, 0); //²Ù×÷ÌáÊ¾
-    Show_Str(10, 115, YELLOW, BLACK, (uint8_t*)"UP:Back", 12, 0); //·µ»ØÌáÊ¾
+    Show_Str(10, 95, YELLOW, BLACK, (uint8_t*)"DN:Add OK:Confirm", 12, 0); //æ“ä½œæç¤º
+    Show_Str(10, 115, YELLOW, BLACK, (uint8_t*)"UP:Back", 12, 0); //è¿”å›æç¤º
     
 }
 
 /**
- * @brief ¹ØÓÚ½çÃæÏÔÊ¾
+ * @brief å…³äºç•Œé¢æ˜¾ç¤º
  */
 void Interface_DisplayAbout(void)
 {
     Show_Str(60, 5, WHITE, BLACK, (uint8_t*)"About", 16, 0);
     LCD_DrawLine(0, 25, LCD_W - 1, 25);
 
-    Show_Str(0, 35, CYAN, BLACK, (uint8_t*)"RF Power Meter V1.0", 16, 0);//°æ±¾
-    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"Freq: 1Hz-100MHz", 12, 0);//ÆµÂÊ
-    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"Power: 0W-2kW", 12, 0);//¹¦ÂÊ·¶Î§¸üĞÂ
-    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"VSWR: 1.0-999.0", 12, 0);//×¤²¨±È
-    Show_Str(10, 100, WHITE, BLACK, (uint8_t*)"Author: XUN YU TEK", 12, 0);//×÷Õß
+    Show_Str(0, 35, CYAN, BLACK, (uint8_t*)"RF Power Meter V1.0", 16, 0);//ç‰ˆæœ¬
+    Show_Str(10, 55, WHITE, BLACK, (uint8_t*)"Freq: 1Hz-100MHz", 12, 0);//é¢‘ç‡
+    Show_Str(10, 70, WHITE, BLACK, (uint8_t*)"Power: 0W-2kW", 12, 0);//åŠŸç‡èŒƒå›´æ›´æ–°
+    Show_Str(10, 85, WHITE, BLACK, (uint8_t*)"VSWR: 1.0-999.0", 12, 0);//é©»æ³¢æ¯”
+    Show_Str(10, 100, WHITE, BLACK, (uint8_t*)"Author: XUN YU TEK", 12, 0);//ä½œè€…
 
     Show_Str(5, 115, GRAY, BLACK, (uint8_t*)"UP:Back", 12, 0);
 }
 
 /**
- * @brief ÏµÍ³Æô¶¯ĞòÁĞ½çÃæ
+ * @brief ç³»ç»Ÿå¯åŠ¨åºåˆ—ç•Œé¢
  */
 void System_BootSequence(void)
 {
@@ -1973,45 +1973,45 @@ void System_BootSequence(void)
     uint8_t i = 0;
     char progress_str[8] = "";
 
-    // ÏÔÊ¾Æô¶¯±êÌâ
-    LCD_Clear(BLACK); //ÇåÆÁ
-    Show_Str(20, 10, GREEN, BLACK, (uint8_t*)"RF Power Meter", 16, 0); //ÉäÆµ¹¦ÂÊ¼Æ±êÌâ
-    Show_Str(30, 30, WHITE, BLACK, (uint8_t*)"System Boot", 16, 0); //ÏµÍ³Æô¶¯ÌáÊ¾
+    // æ˜¾ç¤ºå¯åŠ¨æ ‡é¢˜
+    LCD_Clear(BLACK); //æ¸…å±
+    Show_Str(20, 10, GREEN, BLACK, (uint8_t*)"RF Power Meter", 16, 0); //å°„é¢‘åŠŸç‡è®¡æ ‡é¢˜
+    Show_Str(30, 30, WHITE, BLACK, (uint8_t*)"System Boot", 16, 0); //ç³»ç»Ÿå¯åŠ¨æç¤º
 
-    Show_Str(20, 65, CYAN, BLACK, (uint8_t*)"Initializing...", 12, 0); //³õÊ¼»¯ÌáÊ¾
+    Show_Str(20, 65, CYAN, BLACK, (uint8_t*)"Initializing...", 12, 0); //åˆå§‹åŒ–æç¤º
 
-    // ³õÊ¼½ø¶ÈÏÔÊ¾ (0-10%)
+    // åˆå§‹è¿›åº¦æ˜¾ç¤º (0-10%)
     for (i = 0; i <= 10; i++) {
         sprintf(progress_str, "%3d%%", i);
-        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);  // ÒÆ¶¯µ½Ô­½ø¶ÈÌõÎ»ÖÃ
+        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);  // ç§»åŠ¨åˆ°åŸè¿›åº¦æ¡ä½ç½®
         HAL_Delay(50);
     }
 
-    // ²½Öè1£ºÆµÂÊ¼Æ³õÊ¼»¯
-    Show_Str(20, 80, YELLOW, BLACK, (uint8_t*)"FreqCounter Init", 12, 0); //ÆµÂÊ¼Æ³õÊ¼»¯ÌáÊ¾
+    // æ­¥éª¤1ï¼šé¢‘ç‡è®¡åˆå§‹åŒ–
+    Show_Str(20, 80, YELLOW, BLACK, (uint8_t*)"FreqCounter Init", 12, 0); //é¢‘ç‡è®¡åˆå§‹åŒ–æç¤º
 
-    // ½ø¶ÈÏÔÊ¾ (10-30%)
+    // è¿›åº¦æ˜¾ç¤º (10-30%)
     for (i = 10; i <= 30; i++) {
         sprintf(progress_str, "%3d%%", i);
-        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0); //½ø¶È°Ù·Ö±ÈÏÔÊ¾
+        Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0); //è¿›åº¦ç™¾åˆ†æ¯”æ˜¾ç¤º
         HAL_Delay(30);
     }
 
     if (FreqCounter_Init() != 0) {
-        LCD_Clear(BLACK); //ÇåÆÁÏÔÊ¾´íÎó
-        Show_Str(10, 50, RED, BLACK, (uint8_t*)"FreqCounter Init FAIL!", 16, 0); //ÆµÂÊ¼Æ³õÊ¼»¯Ê§°Ü
-        Show_Str(30, 70, WHITE, BLACK, (uint8_t*)"System Halted", 16, 0); //ÏµÍ³Í£Ö¹ÌáÊ¾
+        LCD_Clear(BLACK); //æ¸…å±æ˜¾ç¤ºé”™è¯¯
+        Show_Str(10, 50, RED, BLACK, (uint8_t*)"FreqCounter Init FAIL!", 16, 0); //é¢‘ç‡è®¡åˆå§‹åŒ–å¤±è´¥
+        Show_Str(30, 70, WHITE, BLACK, (uint8_t*)"System Halted", 16, 0); //ç³»ç»Ÿåœæ­¢æç¤º
         while(1) {
-            HAL_Delay(1000);  // Í£Ö¹ÔËĞĞ£¬²»Î¹¹·ÈÃÏµÍ³¸´Î»
+            HAL_Delay(1000);  // åœæ­¢è¿è¡Œï¼Œä¸å–‚ç‹—è®©ç³»ç»Ÿå¤ä½
         }
     }
-    Show_Str(120, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0); //²½Öè1Íê³É±ê¼Ç
-    HAL_IWDG_Refresh(&hiwdg);  // ²½Öè1Íê³ÉºóÎ¹¹·
+    Show_Str(120, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0); //æ­¥éª¤1å®Œæˆæ ‡è®°
+    HAL_IWDG_Refresh(&hiwdg);  // æ­¥éª¤1å®Œæˆåå–‚ç‹—
 
-    // ²½Öè2£ºÆµÂÊ¼ÆÆô¶¯
+    // æ­¥éª¤2ï¼šé¢‘ç‡è®¡å¯åŠ¨
     Show_Str(20, 95, YELLOW, BLACK, (uint8_t*)"FreqCounter Start", 12, 0);
 
-    // ½ø¶ÈÏÔÊ¾ (30-50%)
+    // è¿›åº¦æ˜¾ç¤º (30-50%)
     for (i = 30; i <= 50; i++) {
         sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
@@ -2023,16 +2023,16 @@ void System_BootSequence(void)
         Show_Str(10, 50, RED, BLACK, (uint8_t*)"FreqCounter Start FAIL!", 16, 0);
         Show_Str(30, 70, WHITE, BLACK, (uint8_t*)"System Halted", 16, 0);
         while(1) {
-            HAL_Delay(1000);  // Í£Ö¹ÔËĞĞ£¬²»Î¹¹·ÈÃÏµÍ³¸´Î»
+            HAL_Delay(1000);  // åœæ­¢è¿è¡Œï¼Œä¸å–‚ç‹—è®©ç³»ç»Ÿå¤ä½
         }
     }
-    Show_Str(135, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // ĞŞ¸´£ºÏòÓÒÒÆ¶¯±ÜÃâÖØµş
-    HAL_IWDG_Refresh(&hiwdg);  // ²½Öè2Íê³ÉºóÎ¹¹·
+    Show_Str(135, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // ä¿®å¤ï¼šå‘å³ç§»åŠ¨é¿å…é‡å 
+    HAL_IWDG_Refresh(&hiwdg);  // æ­¥éª¤2å®Œæˆåå–‚ç‹—
 
-    // ²½Öè3£º½çÃæ¹ÜÀíÆ÷³õÊ¼»¯
+    // æ­¥éª¤3ï¼šç•Œé¢ç®¡ç†å™¨åˆå§‹åŒ–
     Show_Str(20, 110, YELLOW, BLACK, (uint8_t*)"Interface Init", 12, 0);
 
-    // ½ø¶ÈÏÔÊ¾ (50-70%)
+    // è¿›åº¦æ˜¾ç¤º (50-70%)
     for (i = 50; i <= 70; i++) {
         sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
@@ -2044,29 +2044,29 @@ void System_BootSequence(void)
         Show_Str(10, 50, RED, BLACK, (uint8_t*)"Interface Init FAIL!", 16, 0);
         Show_Str(30, 70, WHITE, BLACK, (uint8_t*)"System Halted", 16, 0);
         while(1) {
-            HAL_Delay(1000);  // Í£Ö¹ÔËĞĞ£¬²»Î¹¹·ÈÃÏµÍ³¸´Î»
+            HAL_Delay(1000);  // åœæ­¢è¿è¡Œï¼Œä¸å–‚ç‹—è®©ç³»ç»Ÿå¤ä½
         }
     }
-    Show_Str(135, 110, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // ĞŞ¸´£ºÏòÓÒÒÆ¶¯±ÜÃâÖØµş
-    HAL_IWDG_Refresh(&hiwdg);  // ²½Öè3Íê³ÉºóÎ¹¹·
+    Show_Str(135, 110, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // ä¿®å¤ï¼šå‘å³ç§»åŠ¨é¿å…é‡å 
+    HAL_IWDG_Refresh(&hiwdg);  // æ­¥éª¤3å®Œæˆåå–‚ç‹—
     HAL_Delay(300);
 
-    // ²½Öè4£ºPWMÆô¶¯ (Ö»Çå³ıÏÂ°ëÆÁ£¬±£Áô±êÌâºÍ½ø¶ÈÏÔÊ¾)
-    const uint16_t y_boot = 47;      // "System Boot"µÄy×ø±ê
-    const uint16_t font_h = 16;      // ×ÖºÅ¸ß¶È
-    const uint16_t margin = 3;      // ¶îÍâ±ß¾à£¬È·±£²»²Áµ½½ø¶ÈÎÄ×Ö
+    // æ­¥éª¤4ï¼šPWMå¯åŠ¨ (åªæ¸…é™¤ä¸‹åŠå±ï¼Œä¿ç•™æ ‡é¢˜å’Œè¿›åº¦æ˜¾ç¤º)
+    const uint16_t y_boot = 47;      // "System Boot"çš„yåæ ‡
+    const uint16_t font_h = 16;      // å­—å·é«˜åº¦
+    const uint16_t margin = 3;      // é¢å¤–è¾¹è·ï¼Œç¡®ä¿ä¸æ“¦åˆ°è¿›åº¦æ–‡å­—
     uint16_t y_clear_start = y_boot + font_h + margin;
     LCD_Fill(0, y_clear_start, lcddev.width - 1, lcddev.height - 1, BLACK);
     Show_Str(20, 10, GREEN, BLACK, (uint8_t*)"RF Power Meter", 16, 0);
     Show_Str(30, 30, WHITE, BLACK, (uint8_t*)"System Boot", 16, 0);
 
-    // »Ö¸´Ö®Ç°µÄ½ø¶È (70%)
+    // æ¢å¤ä¹‹å‰çš„è¿›åº¦ (70%)
     sprintf(progress_str, "%3d%%", 70);
     Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
 
     Show_Str(20, 80, YELLOW, BLACK, (uint8_t*)"PWM Backlight", 12, 0);
 
-    // ½ø¶ÈÏÔÊ¾ (70-85%)
+    // è¿›åº¦æ˜¾ç¤º (70-85%)
     for (i = 70; i <= 85; i++) {
         sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
@@ -2074,25 +2074,25 @@ void System_BootSequence(void)
     }
 
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-    Show_Str(135, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // ĞŞ¸´£ºÏòÓÒÒÆ¶¯±ÜÃâÖØµş
+    Show_Str(135, 80, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // ä¿®å¤ï¼šå‘å³ç§»åŠ¨é¿å…é‡å 
 
-    // ²½Öè5£ºÏµÍ³¾ÍĞ÷
+    // æ­¥éª¤5ï¼šç³»ç»Ÿå°±ç»ª
     Show_Str(20, 95, YELLOW, BLACK, (uint8_t*)"System Ready", 12, 0);
 
-    // ½ø¶ÈÏÔÊ¾ (85-100%)
+    // è¿›åº¦æ˜¾ç¤º (85-100%)
     for (i = 85; i <= 100; i++) {
         sprintf(progress_str, "%3d%%", i);
         Show_Str(55, 47, WHITE, BLACK, (uint8_t*)progress_str, 16, 0);
         HAL_Delay(25);
     }
 
-    Show_Str(135, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // ĞŞ¸´£ºÏòÓÒÒÆ¶¯±ÜÃâÖØµş
-    HAL_IWDG_Refresh(&hiwdg);  // Æô¶¯ĞòÁĞÍê³Éºó×îºóÒ»´ÎÎ¹¹·
+    Show_Str(135, 95, GREEN, BLACK, (uint8_t*)"OK", 12, 0); // ä¿®å¤ï¼šå‘å³ç§»åŠ¨é¿å…é‡å 
+    HAL_IWDG_Refresh(&hiwdg);  // å¯åŠ¨åºåˆ—å®Œæˆåæœ€åä¸€æ¬¡å–‚ç‹—
 
-    // ÏÔÊ¾Íê³ÉĞÅÏ¢
+    // æ˜¾ç¤ºå®Œæˆä¿¡æ¯
     Show_Str(35, 110, WHITE, BLACK, (uint8_t*)"Boot Complete!", 16, 0);
     HAL_Delay(1000);
 
-    // ÇåÆÁ×¼±¸½øÈëÖ÷½çÃæ
+    // æ¸…å±å‡†å¤‡è¿›å…¥ä¸»ç•Œé¢
     LCD_Clear(BLACK);
 }

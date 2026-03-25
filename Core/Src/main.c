@@ -31,6 +31,8 @@
 #include "ST7567A.h"
 #include "frequency_counter.h"
 #include "interface_manager.h"
+#include "sc_port.h"
+#include "ui_main.h"
 #include <math.h>
 #include "string.h"
 #include "stdio.h"
@@ -114,7 +116,8 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  HAL_Delay(100);//
+  HAL_Delay(400);//
+  HAL_IWDG_Refresh(&hiwdg);
   //HAL_TIM_Base_Start_IT(&htim2);          //使能中断外部时钟无需内部中断
   HAL_TIM_Base_Start_IT(&htim3);          //使能中断
   //HAL_TIM_Base_Start_IT(&htim4);          //使能中断
@@ -122,10 +125,11 @@ int main(void)
   LCD_Init();
   LCD_SetBacklight(250);  // 设置背光亮度为80%
   LCD_Clear(BLACK);
+  SC_Port_Init();
 
   // 执行系统启动序列
   System_BootSequence();
-
+  sc_create_task(0, ui_main_task, 100);  /* 启动主界面，100ms 刷新 */
   // 启动完成后第一次喂狗
   HAL_IWDG_Refresh(&hiwdg);
 
@@ -147,8 +151,17 @@ int main(void)
     // 处理射频参数计算
     ProcessRFParameters();
 
-    // 处理界面管理器 (包括显示更新和按键处理)
-    InterfaceManager_Process();
+    SC_Port_Tick();          /* 同步 ms 计数给 SCGUI 调度器 */
+    sc_task_loop(NULL);      /* 驱动 SCGUI 任务（定时刷新 + 按键响应）*/
+    //InterfaceManager_Process();  /* 旧界面管理器（暂停，由 SCGUI 接管）*/
+
+    /* 按键注入：将 TIM3 扫描结果转发给 SCGUI 事件队列 */
+    {
+      KeyValue_t _k = InterfaceManager_GetKey();
+      if      (_k == KEY_UP)   SC_Port_InjectKey(SC_KEY_UP);
+      else if (_k == KEY_OK)   SC_Port_InjectKey(SC_KEY_OK);
+      else if (_k == KEY_DOWN) SC_Port_InjectKey(SC_KEY_DOWN);
+    }
 
     // 检查频率计新结果
     if (FreqCounter_IsNewResult()) {

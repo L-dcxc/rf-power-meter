@@ -18,7 +18,7 @@ typedef struct {
   char Msk[128];
 } typFNT_GB32;
 
-// ÊÊÅäSTM32£ºÒÆ³ıcode¹Ø¼ü×Ö£¬¸ÄÓÃconst
+// é€‚é…STM32ï¼šç§»é™¤codeå…³é”®å­—ï¼Œæ”¹ç”¨const
 extern const unsigned char asc2_1206[95][12];
 extern const unsigned char asc2_1608[95][16];
 extern const typFNT_GB16 tfont16[];

@@ -1,0 +1,2 @@
+Dependencies for Project 'flash_download', Target 'flash_download': (DO NOT MODIFY !)
+F (..\..\SCGUI\bmp\kof97b.c)(0x6963AFCF)(-c --cpu Cortex-M3 -D__MICROLIB -O1 --apcs=interwork -I.\RTE\_flash_download-IC:\Keil_v5\ARM\PACK\Keil\STM32F1xx_DFP\2.2.0\Device\Include-IC:\Keil_v5\ARM\CMSIS\Include-D__UVISION_VERSION="525" -DSTM32F10X_MD -DEX_FLASH-o .\objects\kof97b.o --depend .\objects\kof97b.d)

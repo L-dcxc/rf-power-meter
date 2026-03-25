@@ -336,7 +336,7 @@
               <MiscControls></MiscControls>
               <Define>USE_HAL_DRIVER,STM32F103xB</Define>
               <Undefine></Undefine>
-              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../my_core</IncludePath>
+              <IncludePath>../Core/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc;../Drivers/STM32F1xx_HAL_Driver/Inc/Legacy;../Drivers/CMSIS/Device/ST/STM32F1xx/Include;../Drivers/CMSIS/Include;../my_core;..\my_core\scgui</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -1029,6 +1029,81 @@
               <FileName>soft_i2c.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\my_core\soft_i2c.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>SCGUI_core</GroupName>
+          <Files>
+            <File>
+              <FileName>lv_font_12.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\lv_font_12.c</FilePath>
+            </File>
+            <File>
+              <FileName>lv_font_16.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\lv_font_16.c</FilePath>
+            </File>
+            <File>
+              <FileName>sc_arc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\sc_arc.c</FilePath>
+            </File>
+            <File>
+              <FileName>sc_common.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\sc_common.c</FilePath>
+            </File>
+            <File>
+              <FileName>sc_event_task.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\sc_event_task.c</FilePath>
+            </File>
+            <File>
+              <FileName>sc_gui.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\sc_gui.c</FilePath>
+            </File>
+            <File>
+              <FileName>sc_indexQOI.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\sc_indexQOI.c</FilePath>
+            </File>
+            <File>
+              <FileName>sc_lvgl_font.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\sc_lvgl_font.c</FilePath>
+            </File>
+            <File>
+              <FileName>sc_menu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\sc_menu.c</FilePath>
+            </File>
+            <File>
+              <FileName>sc_transform.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\sc_transform.c</FilePath>
+            </File>
+            <File>
+              <FileName>sc_port.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\sc_port.c</FilePath>
+            </File>
+            <File>
+              <FileName>ui_main.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\ui_main.c</FilePath>
+            </File>
+            <File>
+              <FileName>lv_font_20.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\scgui\lv_font_20.c</FilePath>
+            </File>
+            <File>
+              <FileName>ui_menu.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\my_core\ui_menu.c</FilePath>
             </File>
           </Files>
         </Group>
