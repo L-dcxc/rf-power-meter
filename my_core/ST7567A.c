@@ -11,7 +11,7 @@
 #include "main.h"
 #include "spi.h"
 #include "tim.h"
-#include "oledfont.h"
+//#include "oledfont.h"
 #include "string.h"
 
 /* USER CODE BEGIN 0 */
@@ -167,9 +167,8 @@ void LCD_Init(void) {
     };
     uint8_t i = 0;
 
-    // ?????? (PWM?????????????????????)
     HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 5000); // 50%????
+    __HAL_TIM_SET_COMPARE(&htim3, TIM_CHANNEL_3, 0); // backlight off until screen is cleared
 
     LCD_Reset(); // ???????????
 

@@ -157,6 +157,12 @@ int8_t InterfaceManager_Init(void)
     } else {
         g_interface_manager.vswr_alarm_threshold = 3.0f;  // 默认VSWR报警阈值
     }
+    uint8_t saved_buzzer_enabled;
+    if (BL24C16_Read(0x0006, &saved_buzzer_enabled, 1) == EEPROM_OK && saved_buzzer_enabled <= 1) {
+        g_interface_manager.buzzer_enabled = saved_buzzer_enabled;
+    } else {
+        g_interface_manager.buzzer_enabled = 1;    // 默认开启蜂鸣器
+    }
     g_interface_manager.alarm_selected_item = 0;  // 默认选中报警开关
     g_interface_manager.last_update_time = 0;
     g_interface_manager.need_refresh = 1;
@@ -256,7 +262,7 @@ void InterfaceManager_Process(void)
     KeyValue_t key = InterfaceManager_GetKey();
     if (key != KEY_NONE) {
         InterfaceManager_HandleKey(key, KEY_STATE_PRESSED);
-        InterfaceManager_Beep(50);  // 按键反馈音
+        if (g_interface_manager.buzzer_enabled) InterfaceManager_Beep(50);  // 按键反馈音
     }
 }
 

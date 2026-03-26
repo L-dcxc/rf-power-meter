@@ -116,15 +116,17 @@ int main(void)
   MX_TIM3_Init();
   MX_TIM4_Init();
   /* USER CODE BEGIN 2 */
-  HAL_Delay(400);//
+  HAL_Delay(200);//
   HAL_IWDG_Refresh(&hiwdg);
   //HAL_TIM_Base_Start_IT(&htim2);          //使能中断外部时钟无需内部中断
   HAL_TIM_Base_Start_IT(&htim3);          //使能中断
   //HAL_TIM_Base_Start_IT(&htim4);          //使能中断
   // 初始化LCD
   LCD_Init();
-  LCD_SetBacklight(250);  // 设置背光亮度为80%
+  HAL_Delay(200);//
   LCD_Clear(BLACK);
+  HAL_IWDG_Refresh(&hiwdg);
+  LCD_SetBacklight(250);  // 设置背光亮度为80%
   SC_Port_Init();
 
   // 执行系统启动序列
@@ -158,9 +160,12 @@ int main(void)
     /* 按键注入：将 TIM3 扫描结果转发给 SCGUI 事件队列 */
     {
       KeyValue_t _k = InterfaceManager_GetKey();
-      if      (_k == KEY_UP)   SC_Port_InjectKey(SC_KEY_UP);
-      else if (_k == KEY_OK)   SC_Port_InjectKey(SC_KEY_OK);
-      else if (_k == KEY_DOWN) SC_Port_InjectKey(SC_KEY_DOWN);
+      if (_k != KEY_NONE) {
+        if      (_k == KEY_UP)   SC_Port_InjectKey(SC_KEY_UP);
+        else if (_k == KEY_OK)   SC_Port_InjectKey(SC_KEY_OK);
+        else if (_k == KEY_DOWN) SC_Port_InjectKey(SC_KEY_DOWN);
+        if (g_interface_manager.buzzer_enabled) InterfaceManager_Beep(50);
+      }
     }
 
     // 检查频率计新结果

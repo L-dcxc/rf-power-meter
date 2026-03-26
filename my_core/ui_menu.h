@@ -5,6 +5,7 @@
 
 void ui_menu_task      (sc_event_t *e);
 void ui_brightness_task(sc_event_t *e);
+void ui_alarm_task     (sc_event_t *e);
 void ui_about_task     (sc_event_t *e);
 void ui_debug_task     (sc_event_t *e);
 
