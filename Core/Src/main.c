@@ -123,9 +123,9 @@ int main(void)
   //HAL_TIM_Base_Start_IT(&htim4);          //使能中断
   // 初始化LCD
   LCD_Init();
-  HAL_Delay(200);//
-  LCD_Clear(BLACK);
+  HAL_Delay(500);//
   HAL_IWDG_Refresh(&hiwdg);
+  LCD_Clear(BLACK);
   LCD_SetBacklight(250);  // 设置背光亮度为80%
   SC_Port_Init();
 

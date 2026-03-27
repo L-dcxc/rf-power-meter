@@ -15,9 +15,10 @@
 /* ---- utility: draw title bar directly to LCD (called from INIT) ---- */
 static void draw_title(const char *text)
 {
-    sc_draw_Fill(NULL, 0, 0, SC_SCREEN_WIDTH, 17, MENU_SEL, 255);
+    sc_draw_Fill(NULL, 0, 0, SC_SCREEN_WIDTH, 17, MENU_BG, 255);   /* black bg */
     sc_rect_t tb = {0, 0, SC_SCREEN_WIDTH, 17};
-    sc_draw_str(NULL, 0, 2, &lv_font_12, text, C_WHITE, MENU_SEL, &tb, ALIGN_CENTER);
+    sc_draw_str(NULL, 0, 2, &lv_font_12, text, C_WHITE, MENU_BG, &tb, ALIGN_CENTER);
+    sc_draw_Fill(NULL, 0, 16, SC_SCREEN_WIDTH, 1, MENU_HINT, 255);  /* 1px gray separator */
 }
 
 /* ==================================================================
@@ -318,7 +319,7 @@ void ui_brightness_task(sc_event_t *e)
 #define ALM_ROW1_Y   28
 #define ALM_ROW2_Y   51
 #define ALM_ANIM_MS   250
-#define ALM_ANIM_L_MS  600   /* L-path (cross-type) animation duration */
+#define ALM_ANIM_L_MS  500   /* L-path (cross-type) animation duration */
 
 /* VSWR digit x-positions */
 #define ALM_X_H     46

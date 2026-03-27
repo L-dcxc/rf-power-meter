@@ -3,7 +3,7 @@
 <title>Static Call Graph - [project_1\project_1.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image project_1\project_1.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Thu Mar 26 14:59:25 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Thu Mar 26 17:55:06 2026
 <BR><P>
 <H3>Maximum Stack Usage =        616 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -2029,7 +2029,7 @@ Global Symbols
 <BR><BR>[Called By]<UL><LI><a href="#[83]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;GUI_DrawFont16
 </UL>
 
-<P><STRONG><a name="[3b]"></a>main</STRONG> (Thumb, 212 bytes, Stack size 0 bytes, main.o(i.main))
+<P><STRONG><a name="[3b]"></a>main</STRONG> (Thumb, 214 bytes, Stack size 0 bytes, main.o(i.main))
 <BR><BR>[Stack]<UL><LI>Max Depth = 312<LI>Call Chain = main &rArr; System_BootSequence &rArr; Show_Str &rArr; LCD_ShowChar &rArr; LCD_SetWindows &rArr; LCD_WriteRAM_Prepare &rArr; LCD_WR_REG &rArr; LCD_SPI_WriteByte &rArr; HAL_SPI_Transmit &rArr; SPI_EndRxTxTransaction &rArr; SPI_WaitFlagStateUntilTimeout
 </UL>
 <BR>[Calls]<UL><LI><a href="#[138]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_task_loop
@@ -2687,8 +2687,8 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_menu_task
 </UL>
 
-<P><STRONG><a name="[136]"></a>draw_title</STRONG> (Thumb, 76 bytes, Stack size 40 bytes, ui_menu.o(i.draw_title))
-<BR><BR>[Stack]<UL><LI>Max Depth = 448<LI>Call Chain = draw_title &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
+<P><STRONG><a name="[136]"></a>draw_title</STRONG> (Thumb, 96 bytes, Stack size 48 bytes, ui_menu.o(i.draw_title))
+<BR><BR>[Stack]<UL><LI>Max Depth = 456<LI>Call Chain = draw_title &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[128]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_draw_Fill
 <LI><a href="#[129]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_draw_str
