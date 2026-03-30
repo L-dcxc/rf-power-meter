@@ -3,7 +3,7 @@
 <title>Static Call Graph - [project_1\project_1.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image project_1\project_1.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Mon Mar 30 11:47:33 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Mon Mar 30 16:24:13 2026
 <BR><P>
 <H3>Maximum Stack Usage =        608 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -2346,7 +2346,8 @@ Global Symbols
 </UL>
 <BR>[Calls]<UL><LI><a href="#[158]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;lv_txt_utf8_next
 </UL>
-<BR>[Called By]<UL><LI><a href="#[13a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_draw_str
+<BR>[Called By]<UL><LI><a href="#[161]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;text_width
+<LI><a href="#[13a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_draw_str
 </UL>
 
 <P><STRONG><a name="[10e]"></a>sc_gui_init</STRONG> (Thumb, 42 bytes, Stack size 20 bytes, sc_gui.o(i.sc_gui_init))
@@ -2497,8 +2498,8 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> ui_menu.o(i.ui_menu_task)
 </UL>
-<P><STRONG><a name="[4d]"></a>ui_debug_task</STRONG> (Thumb, 138 bytes, Stack size 32 bytes, ui_menu.o(i.ui_debug_task))
-<BR><BR>[Stack]<UL><LI>Max Depth = 528<LI>Call Chain = ui_debug_task &rArr; dbg_draw_values &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
+<P><STRONG><a name="[4d]"></a>ui_debug_task</STRONG> (Thumb, 150 bytes, Stack size 40 bytes, ui_menu.o(i.ui_debug_task))
+<BR><BR>[Stack]<UL><LI>Max Depth = 536<LI>Call Chain = ui_debug_task &rArr; dbg_draw_values &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[149]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_create_task
 <LI><a href="#[6c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GetTick
@@ -3061,8 +3062,10 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_menu_task
 </UL>
 
-<P><STRONG><a name="[161]"></a>text_width</STRONG> (Thumb, 50 bytes, Stack size 32 bytes, ui_menu.o(i.text_width))
-<BR><BR>[Stack]<UL><LI>Max Depth = 32<LI>Call Chain = text_width
+<P><STRONG><a name="[161]"></a>text_width</STRONG> (Thumb, 38 bytes, Stack size 160 bytes, ui_menu.o(i.text_width))
+<BR><BR>[Stack]<UL><LI>Max Depth = 240<LI>Call Chain = text_width &rArr; sc_get_line_width &rArr; lv_txt_utf8_next
+</UL>
+<BR>[Calls]<UL><LI><a href="#[156]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_get_line_width
 </UL>
 <BR>[Called By]<UL><LI><a href="#[42]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_cal_select_task
 <LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_menu_task

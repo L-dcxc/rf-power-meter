@@ -53,13 +53,13 @@ static void draw_title(const char *text)
  *  Text rects start at x=CURSOR_W+2 so the bar never overlaps text.
  * ================================================================== */
 static const char * const MENU_ITEMS[] = {
-    "Brightness Set",
-    "Calibration",
-    "Alarm Setup",
-    "About Device",
-    "Diagnostics",
-    "Contact Us",
-    "< Back"
+    "亮度设置",
+    "标定设置",
+    "报警设置",
+    "关于设备",
+    "调试页面",
+    "联系我们",
+    "返回"
 };
 #define MENU_COUNT       7
 #define VISIBLE_COUNT    5
@@ -81,14 +81,9 @@ static float ease_out_cubic(float t)
 /* Measure pixel width of ASCII string in given font */
 static uint16_t text_width(lv_font_t *font, const char *s)
 {
-    lv_font_glyph_dsc_t g;
-    uint16_t w = 0;
-    while (*s) {
-        if (font->get_glyph_dsc(font, &g, (uint32_t)(uint8_t)*s, 0))
-            w += g.adv_w;
-        s++;
-    }
-    return w;
+    unicode_t glyph_id[SC_UINCODE_SIZE];
+    uint32_t indx = 0;
+    return sc_get_line_width(SC_INT16_MAX, font, s, &indx, glyph_id).line_width;
 }
 
 static int8_t  g_menu_cursor = 0;
@@ -167,7 +162,7 @@ void ui_menu_task(sc_event_t *e)
             g_from_w = g_to_w = (float)(g_item_w[0] + BAR_PAD);
             g_anim_start = HAL_GetTick();
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
-            draw_title("Menu");
+            draw_title("菜单");
             break;
         }
 
@@ -248,7 +243,7 @@ static void draw_brightness(sc_pfb_t *pfb, uint8_t level)
     char buf[20];
     int i;
 
-    sprintf(buf, "Level: %u / %u", (unsigned)level, (unsigned)BRIGHT_LEVELS);
+    sprintf(buf, "等级: %u / %u", (unsigned)level, (unsigned)BRIGHT_LEVELS);
     sc_rect_t lbox = {0, 48, SC_SCREEN_WIDTH, 17};
     sc_draw_str(pfb, 0, 0, &lv_font_12, buf, C_WHITE, MENU_BG, &lbox, ALIGN_CENTER);
 
@@ -260,8 +255,8 @@ static void draw_brightness(sc_pfb_t *pfb, uint8_t level)
                      BRIGHT_CELL_W, BRIGHT_CELL_H, cc, 255);
     }
 
-    sc_rect_t hint = {0, 116, SC_SCREEN_WIDTH, 12};
-    sc_draw_str(pfb, 0, 0, &lv_font_12, "+   OK:Save/Back  -",
+    sc_rect_t hint = {0, 112, SC_SCREEN_WIDTH, 16};
+    sc_draw_str(pfb, 0, 0, &lv_font_12, "+   OK:保存/返回  -",
                 MENU_HINT, MENU_BG, &hint, ALIGN_CENTER);
 }
 
@@ -275,7 +270,12 @@ void ui_brightness_task(sc_event_t *e)
             s_level = g_interface_manager.brightness_level;
             if (s_level < 1 || s_level > BRIGHT_LEVELS) s_level = 5;
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
-            draw_title("Brightness");
+            {
+                sc_draw_Fill(NULL, 0, 0, SC_SCREEN_WIDTH, 19, MENU_BG, 255);
+                sc_rect_t tb = {0, 0, SC_SCREEN_WIDTH, 19};
+                sc_draw_str(NULL, 0, 2, &lv_font_12, "\xe4\xba\xae\xe5\xba\xa6\xe8\xae\xbe\xe7\xbd\xae", C_WHITE, MENU_BG, &tb, ALIGN_CENTER);
+                sc_draw_Fill(NULL, 0, 18, SC_SCREEN_WIDTH, 1, MENU_HINT, 255);
+            }
             break;
 
         case SC_EVENT_TYPE_TIMER:
@@ -441,21 +441,21 @@ static void alarm_draw_content(sc_pfb_t *pfb,
     sc_draw_Fill(pfb, 0, 68, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
 
     /* Row 0: Alarm En */
-    sc_draw_str(pfb, 14, ALM_ROW0_Y, &lv_font_12, "Alarm En:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 14, ALM_ROW0_Y, &lv_font_12, "\xe8\xad\xa6\xe6\x8a\xa5\xe5\xbc\x80\xe5\x85\xb3:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
     if (s_en)
         sc_draw_str(pfb, 92, ALM_ROW0_Y, &lv_font_12, "ON ", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
     else
         sc_draw_str(pfb, 92, ALM_ROW0_Y, &lv_font_12, "OFF", (uint16_t)0xF800, MENU_BG, NULL, ALIGN_NONE);
 
     /* Row 1: Key Beep */
-    sc_draw_str(pfb, 14, ALM_ROW1_Y, &lv_font_12, "Key Beep:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 14, ALM_ROW1_Y, &lv_font_12, "\xe6\x8c\x89\xe9\x94\xae\xe9\x9f\xb3:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
     if (s_buz)
         sc_draw_str(pfb, 92, ALM_ROW1_Y, &lv_font_12, "ON ", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
     else
         sc_draw_str(pfb, 92, ALM_ROW1_Y, &lv_font_12, "OFF", (uint16_t)0xF800, MENU_BG, NULL, ALIGN_NONE);
 
     /* Row 2: VSWR Limit */
-    sc_draw_str(pfb, 14, ALM_ROW2_Y, &lv_font_12, "VSWR Limit:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 14, ALM_ROW2_Y, &lv_font_12, "VSWR\xe9\x98\x88\xe5\x80\xbc:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
 
     /* Digit row (all white — underline is sole cursor) */
     total_tenths = (int)(s_vswr * 10.0f + 0.5f);
@@ -1337,7 +1337,7 @@ static void dbg_draw_values(void)
     sc_draw_str(NULL, 92, 91, &lv_font_12, buf, C_CYAN, MENU_BG, NULL, ALIGN_NONE);
 
     /* Row 5 — Result (y=114): clear value area then draw */
-    sc_draw_Fill(NULL, 61, 114, 70, 12, MENU_BG, 255);
+    sc_draw_Fill(NULL, 61, 114, SC_SCREEN_WIDTH - 61, 16, MENU_BG, 255);
     if (is_cal && g_power_result.is_valid) {
         sprintf(buf, "%.1fW", g_power_result.forward_power);
         sc_draw_str(NULL, 61, 114, &lv_font_12, buf, C_WHITE, MENU_BG, NULL, ALIGN_NONE);
@@ -1353,8 +1353,11 @@ void ui_debug_task(sc_event_t *e)
         case SC_EVENT_TYPE_INIT:
         {
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
-            sc_draw_str(NULL, 4, 2, &lv_font_16, "Diagnostics", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
-            sc_draw_Fill(NULL, 0, 19, SC_SCREEN_WIDTH, 1, C_WHITE, 255);
+            {
+                sc_rect_t tb = {0, 0, SC_SCREEN_WIDTH, 19};
+                sc_draw_str(NULL, 0, 2, &lv_font_12, "调试信息", C_WHITE, MENU_BG, &tb, ALIGN_CENTER);
+                sc_draw_Fill(NULL, 0, 19, SC_SCREEN_WIDTH, 1, MENU_HINT, 255);
+            }
             dbg_draw_static();
             dbg_draw_values();
             break;
@@ -1391,7 +1394,7 @@ void ui_contact_task(sc_event_t *e)
         {
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
 
-            sc_draw_str(NULL, 4, 3, &lv_font_16, "Contact Us", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_str(NULL, 4, 5, &lv_font_12, "联系我们:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
             sc_draw_Fill(NULL, 0, 22, SC_SCREEN_WIDTH, 1, C_WHITE, 255);
 
             sc_draw_str(NULL, 14, 29, &lv_font_12, "www.xunyutek.com", (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
@@ -1428,7 +1431,7 @@ void ui_about_task(sc_event_t *e)
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
 
             /* ── Title (y=3, lv_font_16) + version (y=7, lv_font_12) ── */
-            sc_draw_str(NULL,   4,  3, &lv_font_16, "RF Power Meter", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_str(NULL,   4,  3, &lv_font_12, "RF Power Meter", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
             sc_draw_str(NULL, 128,  7, &lv_font_12, "V1.0",           (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
 
             /* ── Title separator (1px green, y=22) ── */
@@ -1436,19 +1439,19 @@ void ui_about_task(sc_event_t *e)
 
             /* ── Spec rows: all green, DY=25, text h=12, seps 7px below text ── */
             /* Row 1 Freq   text y=29~40, sep y=47 */
-            sc_draw_str(NULL, 4, 29, &lv_font_12, "Freq:  1Hz - 100MHz", (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_str(NULL, 4, 29, &lv_font_12, "频率:  1Hz - 100MHz", (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
             sc_draw_Fill(NULL, 0, 47, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
 
             /* Row 2 Power  text y=54~65, sep y=72 */
-            sc_draw_str(NULL, 4, 54, &lv_font_12, "Power: 0W - 2kW",    C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_str(NULL, 4, 54, &lv_font_12, "功率: 0W - 2kW",    C_CYAN, MENU_BG, NULL, ALIGN_NONE);
             sc_draw_Fill(NULL, 0, 72, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
 
             /* Row 3 VSWR   text y=79~90, sep y=97 */
-            sc_draw_str(NULL, 4, 79, &lv_font_12, "VSWR:  1.0 - 999.0", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_str(NULL, 4, 79, &lv_font_12, "\xe9\xa9\xbb\xe6\xb3\xa2\xe6\xaf\x94: 1.0 - 999.0", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
             sc_draw_Fill(NULL, 0, 97, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
 
             /* Row 4 Author text y=104~115 (bottom margin 14px to y=129) */
-            sc_draw_str(NULL, 4, 104, &lv_font_12, "Author: XUN YU TEK", (uint16_t)0xF81F, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_str(NULL, 4, 104, &lv_font_12, "\xe4\xbd\x9c\xe8\x80\x85: XUN YU TEK", (uint16_t)0xF81F, MENU_BG, NULL, ALIGN_NONE);
             break;
         }
 
