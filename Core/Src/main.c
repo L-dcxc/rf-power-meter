@@ -121,9 +121,11 @@ int main(void)
   //HAL_TIM_Base_Start_IT(&htim2);          //使能中断外部时钟无需内部中断
   HAL_TIM_Base_Start_IT(&htim3);          //使能中断
   //HAL_TIM_Base_Start_IT(&htim4);          //使能中断
-  // 初始化LCD
+  // 初始化LCD（双次初始化，防止上电ESD干扰导致白屏）
   LCD_Init();
-  HAL_Delay(500);//
+  HAL_Delay(100);
+  LCD_Init();
+  HAL_Delay(400);
   HAL_IWDG_Refresh(&hiwdg);
   LCD_Clear(BLACK);
   LCD_SetBacklight(250);  // 设置背光亮度为80%

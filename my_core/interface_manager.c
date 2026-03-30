@@ -280,15 +280,10 @@ void InterfaceManager_HandleLongPress(uint8_t key)
                 InterfaceManager_Beep(200);  // 长按反馈音
                 break;
 
-            case INTERFACE_CAL_BAND://不处理
-                // // 频率标定界面长按UP键返回零点标定
-                // Calibration_StartStep(CAL_STEP_ZERO);
-                // InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
-                // InterfaceManager_Beep(200);  // 长按反馈音
+            case INTERFACE_CAL_BAND:
                 break;
 
             default:
-                // 其他界面不处理长按
                 break;
         }
     }
@@ -872,24 +867,6 @@ void Calibration_LoadFromEEPROM(void)
         g_calibration_data.is_calibrated = 0;
     }
 
-    // 一次性清除损坏的EEPROM数据（临时修复）
-    static uint8_t eeprom_cleared = 0;
-    if (!eeprom_cleared) {
-
-        g_calibration_data.freq_trim = 1.0f;
-        g_calibration_data.freq_gain_fwd = 1.0f;
-        g_calibration_data.freq_gain_ref = 1.0f;
-        g_calibration_data.cal_frequency = 14.0f;
-
-        // 保存正确的数据到EEPROM
-        BL24C16_Write(0x0400, (uint8_t*)&g_calibration_data.freq_trim, sizeof(float));
-        BL24C16_Write(0x0300, (uint8_t*)&g_calibration_data.freq_gain_fwd, sizeof(float));
-        BL24C16_Write(0x0304, (uint8_t*)&g_calibration_data.freq_gain_ref, sizeof(float));
-        BL24C16_Write(0x0308, (uint8_t*)&g_calibration_data.cal_frequency, sizeof(float));
-
-        eeprom_cleared = 1;
-
-    }
 
 
 }

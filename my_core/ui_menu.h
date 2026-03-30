@@ -8,5 +8,6 @@ void ui_brightness_task(sc_event_t *e);
 void ui_alarm_task     (sc_event_t *e);
 void ui_about_task     (sc_event_t *e);
 void ui_debug_task     (sc_event_t *e);
+void ui_contact_task   (sc_event_t *e);
 
 #endif /* UI_MENU_H */

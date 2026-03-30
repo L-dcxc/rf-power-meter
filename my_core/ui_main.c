@@ -31,7 +31,7 @@
 #define RPANEL_DY   22      /* 行间距（等分显示区域）*/
 
 /* ── 量程 ── */
-#define GAUGE_FULL_SCALE_W  1000.0f
+#define GAUGE_FULL_SCALE_W  2000.0f
 
 /* ── 背景色（深海军蓝，比纯黑更柔和）── */
 #define C_BG    ((color_t)0x0000)
@@ -100,7 +100,7 @@ static void draw_content(sc_pfb_t *pfb,
         sprintf(buf, "%.2fkW", fwd_w / 1000.0f);
     else
         sprintf(buf, "%.1fW", fwd_w);
-    sc_draw_str(pfb, 0, 0, &lv_font_20, buf,
+    sc_draw_str(pfb, 0, 0, &lv_font_12, buf,
                 C_WHITE, C_BG, &pw_box, ALIGN_CENTER);
 
     /* ── 左面板底部：量程标注 ── */

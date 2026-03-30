@@ -3,6 +3,7 @@
 #include "sc_common.h"
 #include "interface_manager.h"
 #include "eeprom_24c16.h"
+#include "frequency_counter.h"
 #include "ui_main.h"
 #include "stm32f1xx_hal.h"
 #include <stdio.h>
@@ -11,6 +12,23 @@
 #define MENU_BG    C_BLACK
 #define MENU_SEL   C_ROYAL_BLUE
 #define MENU_HINT  C_DIM_GRAY
+
+static void ui_calibration_task(sc_event_t *e);
+static void ui_cal_select_task(sc_event_t *e);
+static void ui_cal_confirm_task(sc_event_t *e);
+static void ui_cal_zero_task(sc_event_t *e);
+static void ui_cal_power_task(sc_event_t *e);
+static void ui_cal_freq_task(sc_event_t *e);
+static void ui_cal_complete_task(sc_event_t *e);
+static void dbg_read_adc(uint32_t *fwd_raw, uint32_t *ref_raw,
+                         float *fwd_v,  float *ref_v);
+
+static uint16_t g_cal_sel_w[4];
+static uint32_t g_cal_sel_anim_start;
+static float g_cal_sel_from_y;
+static float g_cal_sel_from_w;
+static float g_cal_sel_to_y;
+static float g_cal_sel_to_w;
 
 /* ---- utility: draw title bar directly to LCD (called from INIT) ---- */
 static void draw_title(const char *text)
@@ -40,14 +58,15 @@ static const char * const MENU_ITEMS[] = {
     "Alarm Setup",
     "About Device",
     "Diagnostics",
+    "Contact Us",
     "< Back"
 };
-#define MENU_COUNT       6
-#define VISIBLE_COUNT    4
-#define ITEM_Y0          22
-#define ITEM_H           24
+#define MENU_COUNT       7
+#define VISIBLE_COUNT    5
+#define ITEM_Y0          20
+#define ITEM_H           20
 #define BAR_X            6     /* bar left margin */
-#define BAR_PAD          12    /* extra width padding around text */
+#define BAR_PAD          18    /* extra width padding around text */
 #define ANIM_MS          300   /* animation duration */
 #define SB_W             3     /* scrollbar width px */
 #define SB_X             (SC_SCREEN_WIDTH - SB_W - 1)
@@ -111,7 +130,7 @@ static void draw_menu_items(sc_pfb_t *pfb, float bar_y, float bar_w)
         int item_idx = g_viewport_start + i;
         int iy = ITEM_Y0 + i * ITEM_H;
         sc_draw_Fill(pfb, 0, iy, SB_X, ITEM_H, MENU_BG, 255);
-        sc_draw_str(pfb, 10, iy + 2, &lv_font_20, MENU_ITEMS[item_idx],
+        sc_draw_str(pfb, 10, iy + 2, &lv_font_12, MENU_ITEMS[item_idx],
                     C_WHITE, MENU_BG, NULL, ALIGN_NONE);
     }
 
@@ -119,7 +138,7 @@ static void draw_menu_items(sc_pfb_t *pfb, float bar_y, float bar_w)
     sc_draw_Fill(pfb, BAR_X, by, bw, ITEM_H, C_WHITE, 255);
 
     /* 3. Target item text in black on top of bar */
-    sc_draw_str(pfb, 10, target_y + 2, &lv_font_20, MENU_ITEMS[g_menu_cursor],
+    sc_draw_str(pfb, 10, target_y + 2, &lv_font_12, MENU_ITEMS[g_menu_cursor],
                 C_BLACK, C_WHITE, NULL, ALIGN_NONE);
 
     /* 4. Scrollbar (right edge) */
@@ -141,7 +160,7 @@ void ui_menu_task(sc_event_t *e)
         {
             int j;
             for (j = 0; j < MENU_COUNT; j++)
-                g_item_w[j] = text_width(&lv_font_20, MENU_ITEMS[j]);
+                g_item_w[j] = text_width(&lv_font_12, MENU_ITEMS[j]);
             g_menu_cursor = 0;
             g_viewport_start = 0;
             g_from_y = g_to_y = (float)ITEM_Y0;
@@ -190,10 +209,12 @@ void ui_menu_task(sc_event_t *e)
                 } else if (cmd == CMD_ENTER) {
                     switch (g_menu_cursor) {
                         case 0: sc_create_task(0, ui_brightness_task,  20); break;
+                        case 1: sc_create_task(0, ui_calibration_task, 100); break;
                         case 2: sc_create_task(0, ui_alarm_task,       50); break;
                         case 3: sc_create_task(0, ui_about_task,      100); break;
                         case 4: sc_create_task(0, ui_debug_task,       50); break;
-                        case 5: sc_create_task(0, ui_main_task,       100); break;
+                        case 5: sc_create_task(0, ui_contact_task,     50); break;
+                        case 6: sc_create_task(0, ui_main_task,       100); break;
                         default: break;
                     }
                 }
@@ -229,7 +250,7 @@ static void draw_brightness(sc_pfb_t *pfb, uint8_t level)
 
     sprintf(buf, "Level: %u / %u", (unsigned)level, (unsigned)BRIGHT_LEVELS);
     sc_rect_t lbox = {0, 48, SC_SCREEN_WIDTH, 17};
-    sc_draw_str(pfb, 0, 0, &lv_font_16, buf, C_WHITE, MENU_BG, &lbox, ALIGN_CENTER);
+    sc_draw_str(pfb, 0, 0, &lv_font_12, buf, C_WHITE, MENU_BG, &lbox, ALIGN_CENTER);
 
     for (i = 0; i < BRIGHT_LEVELS; i++) {
         color_t cc = (i < (int)level) ? C_ROYAL_BLUE : C_DIM_GRAY;
@@ -557,6 +578,663 @@ void ui_alarm_task(sc_event_t *e)
 }
 
 /* ==================================================================
+ *  Calibration wizard (SCGUI version)
+ * ================================================================== */
+
+#define CAL_MIN_FREQ    1.0f
+#define CAL_MAX_FREQ   100.0f
+#define CAL_FREQ_STEP   1.0f
+
+static const float CAL_POWER_POINTS[20] = {
+    100.0f, 200.0f, 300.0f, 400.0f, 500.0f,
+    600.0f, 700.0f, 800.0f, 900.0f, 1000.0f,
+    1100.0f, 1200.0f, 1300.0f, 1400.0f, 1500.0f,
+    1600.0f, 1700.0f, 1800.0f, 1900.0f, 2000.0f
+};
+
+static void cal_open_task(InterfaceIndex_t interface)
+{
+    switch (interface) {
+        case INTERFACE_CALIBRATION:      sc_create_task(0, ui_calibration_task, 100); break;
+        case INTERFACE_CAL_STEP_SELECT:  sc_create_task(0, ui_cal_select_task,  80);  break;
+        case INTERFACE_CAL_CONFIRM:      sc_create_task(0, ui_cal_confirm_task, 100); break;
+        case INTERFACE_CAL_ZERO:         sc_create_task(0, ui_cal_zero_task,   100);  break;
+        case INTERFACE_CAL_POWER:        sc_create_task(0, ui_cal_power_task,  100);  break;
+        case INTERFACE_CAL_BAND:         sc_create_task(0, ui_cal_freq_task,   100);  break;
+        case INTERFACE_CAL_COMPLETE:     sc_create_task(0, ui_cal_complete_task, 100); break;
+        default:                         sc_create_task(0, ui_menu_task, 50);          break;
+    }
+}
+
+static void cal_switch_to(InterfaceIndex_t interface)
+{
+    InterfaceManager_SwitchTo(interface);
+    cal_open_task(interface);
+}
+
+static void cal_draw_header(sc_pfb_t *pfb, const char *title)
+{
+    sc_draw_str(pfb, 4, 2, &lv_font_16, title, C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_Fill(pfb, 0, 19, SC_SCREEN_WIDTH, 1, C_WHITE, 255);
+}
+
+
+static void cal_format_power(char *buf, float power)
+{
+    if (power >= 1000.0f)
+        sprintf(buf, "%.1fkW", power / 1000.0f);
+    else
+        sprintf(buf, "%.0fW", power);
+}
+
+static void cal_select_start_anim(uint8_t new_sel, float cur_y, float cur_w)
+{
+    g_cal_sel_from_y = cur_y;
+    g_cal_sel_from_w = cur_w;
+    g_cal_sel_to_y = (float)(22 + new_sel * 16);
+    g_cal_sel_to_w = (float)(g_cal_sel_w[new_sel] + 20);
+    g_calibration_state.selected_step = new_sel;
+    g_cal_sel_anim_start = HAL_GetTick();
+}
+
+static void cal_draw_entry(sc_pfb_t *pfb)
+{
+    cal_draw_header(pfb, "Calibration");
+    sc_draw_str(pfb, 3, 22, &lv_font_12, "Cal Status:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    if (g_calibration_data.is_calibrated)
+        sc_draw_str(pfb, 80, 37, &lv_font_12, "CALIBRATED", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+    else
+        sc_draw_str(pfb, 85, 37, &lv_font_12, "NOT CAL", (uint16_t)0xF800, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_Fill(pfb, 0, 54, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+    sc_draw_str(pfb, 3, 58, &lv_font_12, "3-Step Wizard:", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 76, &lv_font_12, "Zero->Power->Freq", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 94, &lv_font_12, "Power: FWD + REF", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 5, 115, &lv_font_12, "OK:Start   UP:Back", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+}
+
+static void cal_draw_select(sc_pfb_t *pfb, float bar_y, float bar_w)
+{
+    static const char * const items[4] = {
+        "0. Full Cal",
+        "1. Zero Cal",
+        "2. Power Cal",
+        "3. Freq Cal"
+    };
+    int i;
+    int y;
+    int by = (int)(bar_y + 0.5f);
+    int bw = (int)(bar_w + 0.5f);
+
+    cal_draw_header(pfb, "Cal Select");
+
+    sc_draw_Fill(pfb, 8, by, bw, 17, C_WHITE, 255);
+
+    for (i = 0; i < 4; i++) {
+        y = 23 + i * 16;
+        if (g_calibration_state.selected_step == (uint8_t)i) {
+            sc_draw_str(pfb, 10, y, &lv_font_12, items[i], C_BLACK, C_WHITE, NULL, ALIGN_NONE);
+        } else {
+            sc_draw_str(pfb, 10, y, &lv_font_12, items[i], C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+        }
+    }
+
+    sc_draw_Fill(pfb, 0, 95, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+    sc_draw_str(pfb, 10, 100, &lv_font_12, "Status:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    if (g_calibration_data.is_calibrated)
+        sc_draw_str(pfb, 68, 100, &lv_font_12, "CAL OK", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+    else
+        sc_draw_str(pfb, 68, 100, &lv_font_12, "NOT CAL", (uint16_t)0xF800, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 5, 114, &lv_font_12, "DOWN:Sel", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 92, 114, &lv_font_12, "UP:Back", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+}
+
+static void cal_draw_confirm(sc_pfb_t *pfb)
+{
+    cal_draw_header(pfb, "Calibration");
+    sc_draw_str(pfb, 6, 27, &lv_font_12, "WARNING:", (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 47, &lv_font_12, "This will reset", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 63, &lv_font_12, "all cal data!", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 80, &lv_font_12, "Prepare:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 96, &lv_font_12, "50ohm load ready", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 5, 115, &lv_font_12, "OK:Start  UP:Cancel", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+}
+
+static void cal_draw_zero(sc_pfb_t *pfb)
+{
+    char buf[24];
+    uint32_t fwd_raw, ref_raw;
+    float fwd_v, ref_v;
+    uint8_t shown_count;
+
+    /* ── Title bar ── */
+    cal_draw_header(pfb, "Zero Cal");
+    /* Step badge top-right */
+    sc_draw_str(pfb, 124, 3, &lv_font_12, "1/3", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+
+    /* ── Main instruction (single, no redundancy) ── */
+    sc_draw_str(pfb, 5, 25, &lv_font_12, "REMOVE RF Input !", C_YELLOW, MENU_BG, NULL, ALIGN_NONE);
+
+    /* ── ADC live panel (horizontal, 2 columns, y safe zones) ──
+     * Row y=41 in [40,60), row y=61 in [60,80): no slice crossing */
+    dbg_read_adc(&fwd_raw, &ref_raw, &fwd_v, &ref_v);
+    sc_draw_Fill(pfb, 0, 40, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+    sc_draw_str(pfb, 5,  43, &lv_font_12, "FWD", C_CYAN,    MENU_BG, NULL, ALIGN_NONE);
+    sprintf(buf, "%4u", (unsigned int)fwd_raw);
+    sc_draw_str(pfb, 30, 43, &lv_font_12, buf,   C_WHITE,   MENU_BG, NULL, ALIGN_NONE);
+    sprintf(buf, "%.2fV", fwd_v);
+    sc_draw_str(pfb, 75, 43, &lv_font_12, buf,   C_WHITE,   MENU_BG, NULL, ALIGN_NONE);
+
+    sc_draw_str(pfb, 5,  61, &lv_font_12, "REF", C_CYAN,    MENU_BG, NULL, ALIGN_NONE);
+    sprintf(buf, "%4u", (unsigned int)ref_raw);
+    sc_draw_str(pfb, 30, 61, &lv_font_12, buf,   C_WHITE,   MENU_BG, NULL, ALIGN_NONE);
+    sprintf(buf, "%.2fV", ref_v);
+    sc_draw_str(pfb, 75, 61, &lv_font_12, buf,   C_WHITE,   MENU_BG, NULL, ALIGN_NONE);
+
+    sc_draw_Fill(pfb, 0, 76, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+    /* ── Status line (y=81, inside [80,100)) ── */
+    if (g_calibration_state.sample_completed) {
+        sc_draw_str(pfb, 5, 81, &lv_font_12, "DONE!", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+    } else if (g_calibration_state.sample_count > 0) {
+        shown_count = g_calibration_state.sample_count - 1;
+        if (shown_count > 10) shown_count = 10;
+        sprintf(buf, "Sampling %u/10", (unsigned int)shown_count);
+        sc_draw_str(pfb, 5, 81, &lv_font_12, buf, (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+    } else if (g_calibration_state.is_stable) {
+        sc_draw_str(pfb, 5, 81, &lv_font_12, "Stable - press OK", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+    } else {
+        sc_draw_str(pfb, 5, 81, &lv_font_12, "Waiting stable...", (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+    }
+
+    /* ── Bottom hint ── */
+    sc_draw_Fill(pfb, 0, 105, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+    sc_draw_str(pfb, 5, 108, &lv_font_12, "UP:Back", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+}
+
+static void cal_draw_power(sc_pfb_t *pfb)
+{
+    char buf[24];
+    char pwr[12];
+    uint32_t fwd_raw, ref_raw;
+    float fwd_v, ref_v;
+    uint8_t shown_count;
+    const char *ch_str = (g_calibration_state.current_channel == 0) ? "FWD" : "REF";
+    uint8_t pt = g_calibration_state.current_power_point + 1;
+
+    /* ── Title bar + step badge ── */
+    cal_draw_header(pfb, "Power Cal");
+    sc_draw_str(pfb, 124, 3, &lv_font_12, "2/3", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+
+    /* ── Target power (large, main focus) at y=22 in [20,40) ── */
+    cal_format_power(pwr, g_calibration_state.target_power);
+    sc_draw_str(pfb, 5, 22, &lv_font_12, pwr, (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+
+    /* ── Channel + point (small, right side) also in [20,40) ── */
+    sprintf(buf, "%s %02u/20", ch_str, (unsigned int)pt);
+    sc_draw_str(pfb, 85, 26, &lv_font_12, buf, C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+
+    /* FWD row: y=43 in [40,60), range 43-54, safe */
+    dbg_read_adc(&fwd_raw, &ref_raw, &fwd_v, &ref_v);
+    sc_draw_Fill(pfb, 0, 40, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+    sc_draw_str(pfb, 5,  43, &lv_font_12, "FWD", C_CYAN,  MENU_BG, NULL, ALIGN_NONE);
+    sprintf(buf, "%4u", (unsigned int)fwd_raw);
+    sc_draw_str(pfb, 30, 43, &lv_font_12, buf,   C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sprintf(buf, "%.2fV", fwd_v);
+    sc_draw_str(pfb, 75, 43, &lv_font_12, buf,   C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+
+    /* REF row: y=61 in [60,80), range 61-72, safe */
+    sc_draw_str(pfb, 5,  61, &lv_font_12, "REF", C_CYAN,  MENU_BG, NULL, ALIGN_NONE);
+    sprintf(buf, "%4u", (unsigned int)ref_raw);
+    sc_draw_str(pfb, 30, 61, &lv_font_12, buf,   C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sprintf(buf, "%.2fV", ref_v);
+    sc_draw_str(pfb, 75, 61, &lv_font_12, buf,   C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+
+    sc_draw_Fill(pfb, 0, 76, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+    /* ── Status line: y=81 in [80,100) ── */
+    if (g_calibration_state.sample_completed) {
+        sc_draw_str(pfb, 5, 81, &lv_font_12, "DONE!", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+    } else if (g_calibration_state.sample_count > 0) {
+        shown_count = g_calibration_state.sample_count - 1;
+        if (shown_count > 10) shown_count = 10;
+        sprintf(buf, "Sampling %u/10", (unsigned int)shown_count);
+        sc_draw_str(pfb, 5, 81, &lv_font_12, buf, (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+    } else if (g_calibration_state.is_stable) {
+        sc_draw_str(pfb, 5, 81, &lv_font_12, "Stable - press OK", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+    } else {
+        sc_draw_str(pfb, 5, 81, &lv_font_12, "Set power & wait", (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+    }
+
+    /* ── Bottom hint ── */
+    sc_draw_Fill(pfb, 0, 105, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+    sc_draw_str(pfb, 5,  108, &lv_font_12, "UP/DOWN:Pt", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 95, 108, &lv_font_12, "UP:Back", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+}
+
+static void cal_draw_freq(sc_pfb_t *pfb)
+{
+    char buf[28];
+    FreqResult_t freq_result;
+    uint8_t shown_count;
+
+    /* ── Title bar + step badge ── */
+    cal_draw_header(pfb, "Freq Cal");
+    sc_draw_str(pfb, 124, 3, &lv_font_12, "3/3", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+
+    /* ── Target freq: large text, y=22 in [20,40) ── */
+    sprintf(buf, "Cal:%.1f MHz", g_calibration_state.cal_frequency);
+    sc_draw_str(pfb, 5, 22, &lv_font_12, buf, (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+
+    /* ── Measured freq: y=47 in [40,60), safe 47-58 ── */
+    sc_draw_Fill(pfb, 0, 41, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+    sc_draw_str(pfb, 5, 47, &lv_font_12, "Meas:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    if (FreqCounter_GetResult(&freq_result) == 0 && freq_result.is_valid) {
+        float real_freq_mhz = (float)freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim / 1000000.0f;
+        sprintf(buf, "%.4f MHz", real_freq_mhz);
+        sc_draw_str(pfb, 55, 47, &lv_font_12, buf, C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    } else {
+        sc_draw_str(pfb, 55, 47, &lv_font_12, "No signal", C_DIM_GRAY, MENU_BG, NULL, ALIGN_NONE);
+    }
+
+    sc_draw_Fill(pfb, 0, 76, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+    /* ── Status line: y=81 in [80,100) ── */
+    if (g_calibration_state.sample_completed) {
+        sc_draw_str(pfb, 5, 81, &lv_font_12, "DONE!", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+    } else if (g_calibration_state.sample_count > 0) {
+        shown_count = g_calibration_state.sample_count - 1;
+        if (shown_count > 10) shown_count = 10;
+        sprintf(buf, "Sampling %u/10", (unsigned int)shown_count);
+        sc_draw_str(pfb, 5, 81, &lv_font_12, buf, (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+    } else if (g_calibration_state.is_stable) {
+        sc_draw_str(pfb, 5, 81, &lv_font_12, "Stable - press OK", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+    } else {
+        sc_draw_str(pfb, 5, 81, &lv_font_12, "Set freq & power", (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+    }
+
+    /* ── Bottom hint ── */
+    sc_draw_Fill(pfb, 0, 105, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+    sc_draw_str(pfb, 5,  108, &lv_font_12, "DOWN:+1MHz", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 95, 108, &lv_font_12, "UP:Back", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+}
+
+static void cal_draw_complete(sc_pfb_t *pfb)
+{
+    cal_draw_header(pfb, "Cal Complete");
+    sc_draw_str(pfb, 36, 40, &lv_font_12, "SUCCESS!", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 60, &lv_font_12, "All data saved", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 75, &lv_font_12, "to EEPROM", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 90, &lv_font_12, "Cal status: ON", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 5, 115, &lv_font_12, "OK:Main  UP:Menu", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+}
+
+static void ui_calibration_task(sc_event_t *e)
+{
+    switch (e->type)
+    {
+        case SC_EVENT_TYPE_INIT:
+            Calibration_Init();
+            InterfaceManager_SwitchTo(INTERFACE_CALIBRATION);
+            sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
+            break;
+
+        case SC_EVENT_TYPE_TIMER:
+        {
+            sc_pfb_t pfb;
+            sc_area_t dyn = {0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
+            sc_pfb_init_slices(&pfb, &dyn, MENU_BG);
+            do {
+                cal_draw_entry(&pfb);
+            } while (sc_pfb_next_slice(&pfb));
+            break;
+        }
+
+        case SC_EVENT_TYPE_CMD:
+            if (e->dat.cmd == CMD_UP || e->dat.cmd == CMD_BACK) {
+                sc_create_task(0, ui_menu_task, 50);
+            } else if (e->dat.cmd == CMD_ENTER) {
+                g_calibration_state.selected_step = 0;
+                cal_switch_to(INTERFACE_CAL_STEP_SELECT);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+static void ui_cal_select_task(sc_event_t *e)
+{
+    switch (e->type)
+    {
+        case SC_EVENT_TYPE_INIT:
+            g_cal_sel_w[0] = text_width(&lv_font_12, "0. Full Cal");
+            g_cal_sel_w[1] = text_width(&lv_font_12, "1. Zero Cal");
+            g_cal_sel_w[2] = text_width(&lv_font_12, "2. Power Cal");
+            g_cal_sel_w[3] = text_width(&lv_font_12, "3. Freq Cal");
+            g_cal_sel_from_y = g_cal_sel_to_y = (float)(22 + g_calibration_state.selected_step * 16);
+            g_cal_sel_from_w = g_cal_sel_to_w = (float)(g_cal_sel_w[g_calibration_state.selected_step] + 20);
+            g_cal_sel_anim_start = HAL_GetTick();
+            InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
+            sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
+            break;
+
+        case SC_EVENT_TYPE_TIMER:
+        {
+            uint32_t elapsed = HAL_GetTick() - g_cal_sel_anim_start;
+            float t = (float)elapsed / (float)ANIM_MS;
+            if (t > 1.0f) t = 1.0f;
+            t = ease_out_cubic(t);
+            float cur_y = g_cal_sel_from_y + (g_cal_sel_to_y - g_cal_sel_from_y) * t;
+            float cur_w = g_cal_sel_from_w + (g_cal_sel_to_w - g_cal_sel_from_w) * t;
+            sc_pfb_t pfb;
+            sc_area_t dyn = {0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
+            sc_pfb_init_slices(&pfb, &dyn, MENU_BG);
+            do {
+                cal_draw_select(&pfb, cur_y, cur_w);
+            } while (sc_pfb_next_slice(&pfb));
+            break;
+        }
+
+        case SC_EVENT_TYPE_CMD:
+            if (e->dat.cmd == CMD_UP || e->dat.cmd == CMD_BACK) {
+                cal_switch_to(INTERFACE_CALIBRATION);
+            } else if (e->dat.cmd == CMD_DOWN) {
+                uint32_t el = HAL_GetTick() - g_cal_sel_anim_start;
+                float t = (el >= ANIM_MS) ? 1.0f : ease_out_cubic((float)el / ANIM_MS);
+                float cy = g_cal_sel_from_y + (g_cal_sel_to_y - g_cal_sel_from_y) * t;
+                float cw = g_cal_sel_from_w + (g_cal_sel_to_w - g_cal_sel_from_w) * t;
+                uint8_t next = (g_calibration_state.selected_step + 1) % 4;
+                cal_select_start_anim(next, cy, cw);
+            } else if (e->dat.cmd == CMD_ENTER) {
+                switch (g_calibration_state.selected_step) {
+                    case 0:
+                        g_calibration_state.is_single_step = 0;
+                        Calibration_StartStep(CAL_STEP_CONFIRM);
+                        cal_switch_to(INTERFACE_CAL_CONFIRM);
+                        break;
+                    case 1:
+                        g_calibration_state.is_single_step = 1;
+                        Calibration_StartStep(CAL_STEP_ZERO);
+                        cal_switch_to(INTERFACE_CAL_ZERO);
+                        break;
+                    case 2:
+                        g_calibration_state.is_single_step = 1;
+                        Calibration_InitPowerStep();
+                        Calibration_StartStep(CAL_STEP_POWER);
+                        cal_switch_to(INTERFACE_CAL_POWER);
+                        break;
+                    case 3:
+                        g_calibration_state.is_single_step = 1;
+                        Calibration_InitBandStep();
+                        Calibration_StartStep(CAL_STEP_BAND);
+                        cal_switch_to(INTERFACE_CAL_BAND);
+                        break;
+                    default:
+                        break;
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+static void ui_cal_confirm_task(sc_event_t *e)
+{
+    switch (e->type)
+    {
+        case SC_EVENT_TYPE_INIT:
+            InterfaceManager_SwitchTo(INTERFACE_CAL_CONFIRM);
+            sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
+            break;
+
+        case SC_EVENT_TYPE_TIMER:
+        {
+            sc_pfb_t pfb;
+            sc_area_t dyn = {0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
+            sc_pfb_init_slices(&pfb, &dyn, MENU_BG);
+            do {
+                cal_draw_confirm(&pfb);
+            } while (sc_pfb_next_slice(&pfb));
+            break;
+        }
+
+        case SC_EVENT_TYPE_CMD:
+            if (e->dat.cmd == CMD_UP || e->dat.cmd == CMD_BACK) {
+                cal_switch_to(INTERFACE_CAL_STEP_SELECT);
+            } else if (e->dat.cmd == CMD_ENTER) {
+                Calibration_StartStep(CAL_STEP_ZERO);
+                cal_switch_to(INTERFACE_CAL_ZERO);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+static void ui_cal_zero_task(sc_event_t *e)
+{
+    switch (e->type)
+    {
+        case SC_EVENT_TYPE_INIT:
+            InterfaceManager_SwitchTo(INTERFACE_CAL_ZERO);
+            sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
+            break;
+
+        case SC_EVENT_TYPE_TIMER:
+        {
+            Calibration_ProcessSample();
+            if (g_interface_manager.current_interface != INTERFACE_CAL_ZERO) {
+                cal_open_task(g_interface_manager.current_interface);
+                break;
+            }
+            sc_pfb_t pfb;
+            sc_area_t dyn = {0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
+            sc_pfb_init_slices(&pfb, &dyn, MENU_BG);
+            do {
+                cal_draw_zero(&pfb);
+            } while (sc_pfb_next_slice(&pfb));
+            break;
+        }
+
+        case SC_EVENT_TYPE_CMD:
+            if (e->dat.cmd == CMD_UP || e->dat.cmd == CMD_BACK) {
+                cal_switch_to(INTERFACE_CAL_CONFIRM);
+            } else if (e->dat.cmd == CMD_ENTER) {
+                if (g_calibration_state.sample_count == 0) {
+                    g_calibration_state.sample_count = 1;
+                    g_calibration_state.sample_sum_fwd = 0.0f;
+                    g_calibration_state.sample_sum_ref = 0.0f;
+                    g_calibration_state.sample_completed = 0;
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+static void ui_cal_power_task(sc_event_t *e)
+{
+    switch (e->type)
+    {
+        case SC_EVENT_TYPE_INIT:
+            InterfaceManager_SwitchTo(INTERFACE_CAL_POWER);
+            sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
+            break;
+
+        case SC_EVENT_TYPE_TIMER:
+        {
+            Calibration_ProcessSample();
+            if (g_interface_manager.current_interface != INTERFACE_CAL_POWER) {
+                cal_open_task(g_interface_manager.current_interface);
+                break;
+            }
+            sc_pfb_t pfb;
+            sc_area_t dyn = {0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
+            sc_pfb_init_slices(&pfb, &dyn, MENU_BG);
+            do {
+                cal_draw_power(&pfb);
+            } while (sc_pfb_next_slice(&pfb));
+            break;
+        }
+
+        case SC_EVENT_TYPE_CMD:
+            if (e->dat.cmd == CMD_UP || e->dat.cmd == CMD_BACK) {
+                if (g_calibration_state.current_channel == 0) {
+                    if (g_calibration_state.current_power_point > 0) {
+                        g_calibration_state.current_power_point--;
+                        g_calibration_state.target_power = CAL_POWER_POINTS[g_calibration_state.current_power_point];
+                    }
+                } else {
+                    if (g_calibration_state.current_power_point > 0) {
+                        g_calibration_state.current_power_point--;
+                        g_calibration_state.target_power = CAL_POWER_POINTS[g_calibration_state.current_power_point];
+                    } else {
+                        g_calibration_state.current_channel = 0;
+                        g_calibration_state.current_power_point = 19;
+                        g_calibration_state.target_power = CAL_POWER_POINTS[19];
+                    }
+                }
+            } else if (e->dat.cmd == CMD_DOWN) {
+                if (g_calibration_state.current_channel == 0) {
+                    if (g_calibration_state.current_power_point < 19) {
+                        g_calibration_state.current_power_point++;
+                        g_calibration_state.target_power = CAL_POWER_POINTS[g_calibration_state.current_power_point];
+                    } else {
+                        g_calibration_state.current_channel = 1;
+                        g_calibration_state.current_power_point = 0;
+                        g_calibration_state.target_power = CAL_POWER_POINTS[0];
+                    }
+                } else {
+                    if (g_calibration_state.current_power_point < 19) {
+                        g_calibration_state.current_power_point++;
+                        g_calibration_state.target_power = CAL_POWER_POINTS[g_calibration_state.current_power_point];
+                    } else {
+                        if (g_calibration_state.is_single_step) {
+                            cal_switch_to(INTERFACE_CAL_STEP_SELECT);
+                        } else {
+                            Calibration_InitBandStep();
+                            Calibration_StartStep(CAL_STEP_BAND);
+                            cal_switch_to(INTERFACE_CAL_BAND);
+                        }
+                    }
+                }
+            } else if (e->dat.cmd == CMD_ENTER) {
+                if (g_calibration_state.sample_count == 0 && g_calibration_state.is_stable) {
+                    g_calibration_state.sample_count = 1;
+                    g_calibration_state.sample_sum_fwd = 0.0f;
+                    g_calibration_state.sample_sum_ref = 0.0f;
+                    g_calibration_state.sample_completed = 0;
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+static void ui_cal_freq_task(sc_event_t *e)
+{
+    switch (e->type)
+    {
+        case SC_EVENT_TYPE_INIT:
+            InterfaceManager_SwitchTo(INTERFACE_CAL_BAND);
+            sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
+            break;
+
+        case SC_EVENT_TYPE_TIMER:
+        {
+            static uint8_t down_hold = 0;
+            if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14) == GPIO_PIN_RESET) {
+                down_hold++;
+                if (down_hold >= 3) {  /* 300ms后开始连续步进，每100ms +1MHz */
+                    g_calibration_state.cal_frequency += CAL_FREQ_STEP;
+                    if (g_calibration_state.cal_frequency > CAL_MAX_FREQ)
+                        g_calibration_state.cal_frequency = CAL_MIN_FREQ;
+                }
+            } else {
+                down_hold = 0;
+            }
+
+            Calibration_ProcessSample();
+            if (g_interface_manager.current_interface != INTERFACE_CAL_BAND) {
+                cal_open_task(g_interface_manager.current_interface);
+                break;
+            }
+            sc_pfb_t pfb;
+            sc_area_t dyn = {0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
+            sc_pfb_init_slices(&pfb, &dyn, MENU_BG);
+            do {
+                cal_draw_freq(&pfb);
+            } while (sc_pfb_next_slice(&pfb));
+            break;
+        }
+
+        case SC_EVENT_TYPE_CMD:
+            if (e->dat.cmd == CMD_UP || e->dat.cmd == CMD_BACK) {
+                Calibration_StartStep(CAL_STEP_POWER);
+                cal_switch_to(INTERFACE_CAL_POWER);
+            } else if (e->dat.cmd == CMD_DOWN) {
+                g_calibration_state.cal_frequency += CAL_FREQ_STEP;
+                if (g_calibration_state.cal_frequency > CAL_MAX_FREQ)
+                    g_calibration_state.cal_frequency = CAL_MIN_FREQ;
+            } else if (e->dat.cmd == CMD_ENTER) {
+                if (g_calibration_state.sample_count == 0 && g_calibration_state.is_stable) {
+                    g_calibration_state.sample_count = 1;
+                    g_calibration_state.sample_sum_fwd = 0.0f;
+                    g_calibration_state.sample_sum_ref = 0.0f;
+                    g_calibration_state.sample_completed = 0;
+                }
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+static void ui_cal_complete_task(sc_event_t *e)
+{
+    switch (e->type)
+    {
+        case SC_EVENT_TYPE_INIT:
+            InterfaceManager_SwitchTo(INTERFACE_CAL_COMPLETE);
+            sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
+            break;
+
+        case SC_EVENT_TYPE_TIMER:
+        {
+            sc_pfb_t pfb;
+            sc_area_t dyn = {0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
+            sc_pfb_init_slices(&pfb, &dyn, MENU_BG);
+            do {
+                cal_draw_complete(&pfb);
+            } while (sc_pfb_next_slice(&pfb));
+            break;
+        }
+
+        case SC_EVENT_TYPE_CMD:
+            if (e->dat.cmd == CMD_UP || e->dat.cmd == CMD_BACK) {
+                sc_create_task(0, ui_menu_task, 50);
+            } else if (e->dat.cmd == CMD_ENTER) {
+                sc_create_task(0, ui_main_task, 100);
+            }
+            break;
+
+        default:
+            break;
+    }
+}
+
+/* ==================================================================
  *  Diagnostics screen — live ADC + calibration readout
  *
  *  y=2~17   title "Diagnostics" (cyan, lv_font_16)
@@ -703,6 +1381,41 @@ void ui_debug_task(sc_event_t *e)
 }
 
 /* ==================================================================
+ *  Contact Us screen (static, any key returns to menu)
+ * ================================================================== */
+void ui_contact_task(sc_event_t *e)
+{
+    switch (e->type)
+    {
+        case SC_EVENT_TYPE_INIT:
+        {
+            sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
+
+            sc_draw_str(NULL, 4, 3, &lv_font_16, "Contact Us", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_Fill(NULL, 0, 22, SC_SCREEN_WIDTH, 1, C_WHITE, 255);
+
+            sc_draw_str(NULL, 14, 29, &lv_font_12, "www.xunyutek.com", (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_Fill(NULL, 0, 47, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+            sc_draw_str(NULL, 14, 54, &lv_font_12, "QQ: 2711597259", (uint16_t)0xF81F, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_Fill(NULL, 0, 72, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+            sc_draw_str(NULL, 14, 79, &lv_font_12, "Tel: 020-31801362", (uint16_t)0xF81F, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_Fill(NULL, 0, 97, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+            sc_draw_str(NULL, 4, 104, &lv_font_12, "Any key: Back", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+            break;
+        }
+
+        case SC_EVENT_TYPE_CMD:
+            sc_create_task(0, ui_menu_task, 50);
+            break;
+
+        default:
+            break;
+    }
+}
+/* ==================================================================
  *  About screen (static, any key returns to menu)
  * ================================================================== */
 void ui_about_task(sc_event_t *e)
@@ -715,27 +1428,27 @@ void ui_about_task(sc_event_t *e)
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
 
             /* ── Title (y=3, lv_font_16) + version (y=7, lv_font_12) ── */
-            sc_draw_str(NULL,   4,  3, &lv_font_16, "RF Power Meter", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
-            sc_draw_str(NULL, 128,  7, &lv_font_12, "V1.0",           (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_str(NULL,   4,  3, &lv_font_16, "RF Power Meter", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_str(NULL, 128,  7, &lv_font_12, "V1.0",           (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
 
             /* ── Title separator (1px green, y=22) ── */
-            sc_draw_Fill(NULL, 0, 22, SC_SCREEN_WIDTH, 1, (uint16_t)0x07E0, 255);
+            sc_draw_Fill(NULL, 0, 22, SC_SCREEN_WIDTH, 1, C_WHITE, 255);
 
             /* ── Spec rows: all green, DY=25, text h=12, seps 7px below text ── */
             /* Row 1 Freq   text y=29~40, sep y=47 */
-            sc_draw_str(NULL, 4, 29, &lv_font_12, "Freq:  1Hz - 100MHz", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
-            sc_draw_Fill(NULL, 0, 47, SC_SCREEN_WIDTH, 1, (uint16_t)0x07E0, 255);
+            sc_draw_str(NULL, 4, 29, &lv_font_12, "Freq:  1Hz - 100MHz", (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_Fill(NULL, 0, 47, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
 
             /* Row 2 Power  text y=54~65, sep y=72 */
-            sc_draw_str(NULL, 4, 54, &lv_font_12, "Power: 0W - 2kW",    (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
-            sc_draw_Fill(NULL, 0, 72, SC_SCREEN_WIDTH, 1, (uint16_t)0x07E0, 255);
+            sc_draw_str(NULL, 4, 54, &lv_font_12, "Power: 0W - 2kW",    C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_Fill(NULL, 0, 72, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
 
             /* Row 3 VSWR   text y=79~90, sep y=97 */
-            sc_draw_str(NULL, 4, 79, &lv_font_12, "VSWR:  1.0 - 999.0", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
-            sc_draw_Fill(NULL, 0, 97, SC_SCREEN_WIDTH, 1, (uint16_t)0x07E0, 255);
+            sc_draw_str(NULL, 4, 79, &lv_font_12, "VSWR:  1.0 - 999.0", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_Fill(NULL, 0, 97, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
 
             /* Row 4 Author text y=104~115 (bottom margin 14px to y=129) */
-            sc_draw_str(NULL, 4, 104, &lv_font_12, "Author: XUN YU TEK", (uint16_t)0x07E0, MENU_BG, NULL, ALIGN_NONE);
+            sc_draw_str(NULL, 4, 104, &lv_font_12, "Author: XUN YU TEK", (uint16_t)0xF81F, MENU_BG, NULL, ALIGN_NONE);
             break;
         }
 
