@@ -3,7 +3,7 @@
 <title>Static Call Graph - [project_1\project_1.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image project_1\project_1.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Mon Mar 30 16:24:13 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Tue Mar 31 09:12:53 2026
 <BR><P>
 <H3>Maximum Stack Usage =        608 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -2286,6 +2286,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_main_task
 <LI><a href="#[4d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_debug_task
 <LI><a href="#[4e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_contact_task
+<LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_brightness_task
 <LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_about_task
 <LI><a href="#[151]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;draw_title
 <LI><a href="#[150]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;draw_menu_items
@@ -2323,6 +2324,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[49]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_main_task
 <LI><a href="#[4d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_debug_task
 <LI><a href="#[4e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_contact_task
+<LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_brightness_task
 <LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_about_task
 <LI><a href="#[151]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;draw_title
 <LI><a href="#[150]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;draw_menu_items
@@ -2474,17 +2476,18 @@ Global Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> ui_menu.o(i.ui_menu_task)
 </UL>
-<P><STRONG><a name="[4a]"></a>ui_brightness_task</STRONG> (Thumb, 188 bytes, Stack size 40 bytes, ui_menu.o(i.ui_brightness_task))
-<BR><BR>[Stack]<UL><LI>Max Depth = 552<LI>Call Chain = ui_brightness_task &rArr; draw_brightness &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
+<P><STRONG><a name="[4a]"></a>ui_brightness_task</STRONG> (Thumb, 266 bytes, Stack size 56 bytes, ui_menu.o(i.ui_brightness_task))
+<BR><BR>[Stack]<UL><LI>Max Depth = 568<LI>Call Chain = ui_brightness_task &rArr; draw_brightness &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[149]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_create_task
+<LI><a href="#[139]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_draw_Fill
 <LI><a href="#[10f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_clear
 <LI><a href="#[136]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_pfb_next_slice
 <LI><a href="#[12d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_pfb_init_slices
 <LI><a href="#[78]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;BL24C16_Write
 <LI><a href="#[ee]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_SetBrightness
-<LI><a href="#[151]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;draw_title
 <LI><a href="#[14d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;draw_brightness
+<LI><a href="#[13a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_draw_str
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> ui_menu.o(i.ui_menu_task)
 </UL>
@@ -3037,8 +3040,7 @@ Local Symbols
 <BR>[Calls]<UL><LI><a href="#[139]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_draw_Fill
 <LI><a href="#[13a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_draw_str
 </UL>
-<BR>[Called By]<UL><LI><a href="#[4a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_brightness_task
-<LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_menu_task
+<BR>[Called By]<UL><LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_menu_task
 </UL>
 
 <P><STRONG><a name="[13c]"></a>ease_out_cubic</STRONG> (Thumb, 36 bytes, Stack size 16 bytes, ui_menu.o(i.ease_out_cubic))
@@ -3129,7 +3131,7 @@ Local Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> ui_menu.o(i.cal_open_task)
 </UL>
-<P><STRONG><a name="[42]"></a>ui_cal_select_task</STRONG> (Thumb, 506 bytes, Stack size 64 bytes, ui_menu.o(i.ui_cal_select_task))
+<P><STRONG><a name="[42]"></a>ui_cal_select_task</STRONG> (Thumb, 504 bytes, Stack size 64 bytes, ui_menu.o(i.ui_cal_select_task))
 <BR><BR>[Stack]<UL><LI>Max Depth = 560<LI>Call Chain = ui_cal_select_task &rArr; cal_draw_select &rArr; cal_draw_header &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[5b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_ui2f

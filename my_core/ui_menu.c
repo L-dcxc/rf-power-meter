@@ -67,7 +67,7 @@ static const char * const MENU_ITEMS[] = {
 #define ITEM_H           20
 #define BAR_X            6     /* bar left margin */
 #define BAR_PAD          18    /* extra width padding around text */
-#define ANIM_MS          300   /* animation duration */
+#define ANIM_MS          200   /* animation duration */
 #define SB_W             3     /* scrollbar width px */
 #define SB_X             (SC_SCREEN_WIDTH - SB_W - 1)
 
@@ -271,17 +271,17 @@ void ui_brightness_task(sc_event_t *e)
             if (s_level < 1 || s_level > BRIGHT_LEVELS) s_level = 5;
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
             {
-                sc_draw_Fill(NULL, 0, 0, SC_SCREEN_WIDTH, 19, MENU_BG, 255);
+                sc_draw_Fill(NULL, 0, 0, SC_SCREEN_WIDTH, 20, MENU_BG, 255);
                 sc_rect_t tb = {0, 0, SC_SCREEN_WIDTH, 19};
                 sc_draw_str(NULL, 0, 2, &lv_font_12, "\xe4\xba\xae\xe5\xba\xa6\xe8\xae\xbe\xe7\xbd\xae", C_WHITE, MENU_BG, &tb, ALIGN_CENTER);
-                sc_draw_Fill(NULL, 0, 18, SC_SCREEN_WIDTH, 1, MENU_HINT, 255);
+                sc_draw_Fill(NULL, 0, 19, SC_SCREEN_WIDTH, 1, MENU_HINT, 255);
             }
             break;
 
         case SC_EVENT_TYPE_TIMER:
         {
             sc_pfb_t pfb;
-            sc_area_t dyn = {0, 17, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
+            sc_area_t dyn = {0, 20, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
             sc_pfb_init_slices(&pfb, &dyn, MENU_BG);
             do {
                 draw_brightness(&pfb, s_level);
