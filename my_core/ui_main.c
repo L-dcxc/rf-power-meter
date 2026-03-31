@@ -60,7 +60,7 @@ static int power_to_arc_angle(float power_w)
 static void draw_content(sc_pfb_t *pfb,
                           float fwd_w, float ref_w,
                           float vswr,  float gamma, float eta,
-                          uint32_t freq_hz)
+                          float freq_hz)
 {
     char buf[24];
     color_t ac = vswr_to_color(vswr);
@@ -144,13 +144,13 @@ static void draw_content(sc_pfb_t *pfb,
     ry += RPANEL_DY;
 
     /* 频率 */
-    if (g_freq_result.is_valid && freq_hz > 0) {
-        if (freq_hz >= 1000000UL)
+    if (g_freq_result.is_valid && freq_hz > 0.0f) {
+        if (freq_hz >= 1000000.0f)
             sprintf(buf, "%.3fMHz", freq_hz / 1000000.0f);
-        else if (freq_hz >= 1000UL)
+        else if (freq_hz >= 1000.0f)
             sprintf(buf, "%.2fkHz", freq_hz / 1000.0f);
         else
-            sprintf(buf, "%uHz", (unsigned int)freq_hz);
+            sprintf(buf, "%.0fHz", freq_hz);
     } else {
         sprintf(buf, "No Signal");
     }
@@ -182,7 +182,7 @@ void ui_main_task(sc_event_t *e)
             float vswr  = g_rf_params.is_valid    ? g_rf_params.vswr               : 1.0f;
             float gamma = g_rf_params.is_valid    ? g_rf_params.reflection_coeff   : 0.0f;
             float eta   = g_rf_params.is_valid    ? g_rf_params.transmission_eff   : 100.0f;
-            uint32_t freq = FreqCounter_GetFrequencyHz();
+            float freq = (float)FreqCounter_GetFrequencyHz() * 16.0f * g_calibration_data.freq_trim;
 
             /* 整个动态区域在同一 PFB 批次渲染，消除闪烁 */
             sc_pfb_t pfb;

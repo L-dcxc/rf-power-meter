@@ -380,13 +380,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
           } else {
             // 按键持续按下，增加长按计数
             key_hold_count++;
-            // 1.5秒长按检测：1500ms / 20ms = 75次
-            if (key_hold_count >= 75 && key_state == 1) {  // 只检测UP键长按
-              // 触发长按事件
-              extern void InterfaceManager_HandleLongPress(uint8_t key);
-              InterfaceManager_HandleLongPress(key_state);
-              key_hold_count = 0;  // 重置计数，避免重复触发
-            }
           }
         } else {
           key_debounce_count = 0;  // 按键释放，清除防抖

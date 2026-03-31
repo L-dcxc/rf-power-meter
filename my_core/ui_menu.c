@@ -612,6 +612,16 @@ static void cal_switch_to(InterfaceIndex_t interface)
     cal_open_task(interface);
 }
 
+static void cal_power_exit(void)
+{
+    if (g_calibration_state.is_single_step) {
+        cal_switch_to(INTERFACE_CAL_STEP_SELECT);
+    } else {
+        Calibration_StartStep(CAL_STEP_ZERO);
+        cal_switch_to(INTERFACE_CAL_ZERO);
+    }
+}
+
 static void cal_draw_header(sc_pfb_t *pfb, const char *title)
 {
     sc_draw_str(pfb, 4, 2, &lv_font_16, title, C_WHITE, MENU_BG, NULL, ALIGN_NONE);
@@ -831,8 +841,13 @@ static void cal_draw_freq(sc_pfb_t *pfb)
     sc_draw_Fill(pfb, 0, 41, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
     sc_draw_str(pfb, 5, 47, &lv_font_12, "Meas:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
     if (FreqCounter_GetResult(&freq_result) == 0 && freq_result.is_valid) {
-        float real_freq_mhz = (float)freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim / 1000000.0f;
-        sprintf(buf, "%.4f MHz", real_freq_mhz);
+        float real_freq_hz = (float)freq_result.frequency_hz * 16.0f * g_calibration_data.freq_trim;
+        if (real_freq_hz >= 1000000.0f)
+            sprintf(buf, "%.4f MHz", real_freq_hz / 1000000.0f);
+        else if (real_freq_hz >= 1000.0f)
+            sprintf(buf, "%.3f kHz", real_freq_hz / 1000.0f);
+        else
+            sprintf(buf, "%.0f Hz", real_freq_hz);
         sc_draw_str(pfb, 55, 47, &lv_font_12, buf, C_WHITE, MENU_BG, NULL, ALIGN_NONE);
     } else {
         sc_draw_str(pfb, 55, 47, &lv_font_12, "No signal", C_DIM_GRAY, MENU_BG, NULL, ALIGN_NONE);
@@ -875,7 +890,7 @@ static void ui_calibration_task(sc_event_t *e)
     switch (e->type)
     {
         case SC_EVENT_TYPE_INIT:
-            Calibration_Init();
+            Calibration_StartStep(CAL_STEP_CONFIRM);
             InterfaceManager_SwitchTo(INTERFACE_CALIBRATION);
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
             break;
@@ -1062,15 +1077,34 @@ static void ui_cal_zero_task(sc_event_t *e)
 
 static void ui_cal_power_task(sc_event_t *e)
 {
+    static uint8_t up_hold = 0;
+
     switch (e->type)
     {
         case SC_EVENT_TYPE_INIT:
+            up_hold = 0;
             InterfaceManager_SwitchTo(INTERFACE_CAL_POWER);
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
             break;
 
         case SC_EVENT_TYPE_TIMER:
         {
+            if (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET) {
+                if (up_hold < 0xFF) {
+                    up_hold++;
+                }
+                if (up_hold >= 15) {
+                    up_hold = 0;
+                    if (g_interface_manager.buzzer_enabled) {
+                        InterfaceManager_Beep(50);
+                    }
+                    cal_power_exit();
+                    break;
+                }
+            } else {
+                up_hold = 0;
+            }
+
             Calibration_ProcessSample();
             if (g_interface_manager.current_interface != INTERFACE_CAL_POWER) {
                 cal_open_task(g_interface_manager.current_interface);
@@ -1086,7 +1120,10 @@ static void ui_cal_power_task(sc_event_t *e)
         }
 
         case SC_EVENT_TYPE_CMD:
-            if (e->dat.cmd == CMD_UP || e->dat.cmd == CMD_BACK) {
+            if (e->dat.cmd == CMD_BACK) {
+                up_hold = 0;
+                cal_power_exit();
+            } else if (e->dat.cmd == CMD_UP) {
                 if (g_calibration_state.current_channel == 0) {
                     if (g_calibration_state.current_power_point > 0) {
                         g_calibration_state.current_power_point--;
@@ -1102,6 +1139,7 @@ static void ui_cal_power_task(sc_event_t *e)
                         g_calibration_state.target_power = CAL_POWER_POINTS[19];
                     }
                 }
+                Calibration_StartStep(CAL_STEP_POWER);
             } else if (e->dat.cmd == CMD_DOWN) {
                 if (g_calibration_state.current_channel == 0) {
                     if (g_calibration_state.current_power_point < 19) {
@@ -1124,8 +1162,10 @@ static void ui_cal_power_task(sc_event_t *e)
                             Calibration_StartStep(CAL_STEP_BAND);
                             cal_switch_to(INTERFACE_CAL_BAND);
                         }
+                        break;
                     }
                 }
+                Calibration_StartStep(CAL_STEP_POWER);
             } else if (e->dat.cmd == CMD_ENTER) {
                 if (g_calibration_state.sample_count == 0 && g_calibration_state.is_stable) {
                     g_calibration_state.sample_count = 1;
@@ -1159,6 +1199,7 @@ static void ui_cal_freq_task(sc_event_t *e)
                     g_calibration_state.cal_frequency += CAL_FREQ_STEP;
                     if (g_calibration_state.cal_frequency > CAL_MAX_FREQ)
                         g_calibration_state.cal_frequency = CAL_MIN_FREQ;
+                    Calibration_StartStep(CAL_STEP_BAND);
                 }
             } else {
                 down_hold = 0;
@@ -1186,6 +1227,7 @@ static void ui_cal_freq_task(sc_event_t *e)
                 g_calibration_state.cal_frequency += CAL_FREQ_STEP;
                 if (g_calibration_state.cal_frequency > CAL_MAX_FREQ)
                     g_calibration_state.cal_frequency = CAL_MIN_FREQ;
+                Calibration_StartStep(CAL_STEP_BAND);
             } else if (e->dat.cmd == CMD_ENTER) {
                 if (g_calibration_state.sample_count == 0 && g_calibration_state.is_stable) {
                     g_calibration_state.sample_count = 1;
