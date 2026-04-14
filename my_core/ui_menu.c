@@ -59,9 +59,10 @@ static const char * const MENU_ITEMS[] = {
     "关于设备",
     "调试页面",
     "联系我们",
+    "通讯设置",
     "返回"
 };
-#define MENU_COUNT       7
+#define MENU_COUNT       8
 #define VISIBLE_COUNT    5
 #define ITEM_Y0          20
 #define ITEM_H           20
@@ -209,7 +210,8 @@ void ui_menu_task(sc_event_t *e)
                         case 3: sc_create_task(0, ui_about_task,      100); break;
                         case 4: sc_create_task(0, ui_debug_task,       50); break;
                         case 5: sc_create_task(0, ui_contact_task,     50); break;
-                        case 6: sc_create_task(0, ui_main_task,       100); break;
+                        case 6: sc_create_task(0, ui_comm_task,        50); break;
+                        case 7: sc_create_task(0, ui_main_task,       100); break;
                         default: break;
                     }
                 }
@@ -1460,6 +1462,130 @@ void ui_contact_task(sc_event_t *e)
             break;
     }
 }
+/* ==================================================================
+ *  Communication settings screen
+ *
+ *  Editable : Modbus slave address (1-255), long-press repeats
+ *  Read-only: baud 9600, 8N1, Modbus RTU
+ *
+ *  y=0..19   title bar
+ *  y=25      addr row  (editable, highlighted)
+ *  y=48      baud row
+ *  y=68      serial params row
+ *  y=88      protocol row
+ *  y=112     hint
+ * ================================================================== */
+#define COMM_REPEAT_INIT  400   /* ms before first repeat */
+#define COMM_REPEAT_FAST  80    /* ms between repeats */
+
+static void draw_comm(sc_pfb_t *pfb, uint8_t addr)
+{
+    char buf[20];
+
+    /* Row 1: slave address (editable) */
+    sc_draw_str(pfb, 5, 25, &lv_font_12, "\xe4\xbb\x8e\xe7\xab\x99\xe5\x9c\xb0\xe5\x9d\x80:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sprintf(buf, "%03u", (unsigned)addr);
+    sc_draw_str(pfb, 95, 25, &lv_font_12, buf, (uint16_t)0xFFE0, MENU_BG, NULL, ALIGN_NONE);
+
+    sc_draw_Fill(pfb, 0, 42, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+    /* Row 2: baud rate (read-only) */
+    sc_draw_str(pfb, 5, 50, &lv_font_12, "\xe6\xb3\xa2 \xe7\x89\xb9 \xe7\x8e\x87:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 95, 50, &lv_font_12, "115200", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+
+    sc_draw_Fill(pfb, 0, 66, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+    /* Row 3: serial params (read-only) */
+    sc_draw_str(pfb, 5, 71, &lv_font_12, "\xe4\xb8\xb2\xe5\x8f\xa3\xe5\x8f\x82\xe6\x95\xb0:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 95, 71, &lv_font_12, "8N1", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+
+    sc_draw_Fill(pfb, 0, 87, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
+
+    /* Row 4: protocol (read-only) */
+    sc_draw_str(pfb, 5, 92, &lv_font_12, "\xe5\x8d\x8f\xe8\xae\xae:", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 60, 92, &lv_font_12, "Modbus RTU", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+
+    /* Hint */
+    sc_draw_str(pfb, 4, 112, &lv_font_12, "-   OK:\xe4\xbf\x9d\xe5\xad\x98/\xe8\xbf\x94\xe5\x9b\x9e  +",
+                MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
+}
+
+void ui_comm_task(sc_event_t *e)
+{
+    static uint8_t  s_addr;
+    static uint8_t  s_key_dir;    /* 0=none, 1=up(+), 2=down(-) */
+    static uint32_t s_key_time;   /* last repeat timestamp */
+    static uint8_t  s_repeating;  /* already in repeat mode */
+
+    switch (e->type)
+    {
+        case SC_EVENT_TYPE_INIT:
+            s_addr      = g_interface_manager.modbus_address;
+            s_key_dir   = 0;
+            s_repeating = 0;
+            sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
+            {
+                sc_draw_Fill(NULL, 0, 0, SC_SCREEN_WIDTH, 20, MENU_BG, 255);
+                sc_rect_t tb = {0, 0, SC_SCREEN_WIDTH, 19};
+                sc_draw_str(NULL, 0, 2, &lv_font_12, "\xe9\x80\x9a\xe8\xae\xaf\xe8\xae\xbe\xe7\xbd\xae",
+                            C_WHITE, MENU_BG, &tb, ALIGN_CENTER);
+                sc_draw_Fill(NULL, 0, 19, SC_SCREEN_WIDTH, 1, MENU_HINT, 255);
+            }
+            break;
+
+        case SC_EVENT_TYPE_TIMER:
+        {
+            /* Long-press repeat: poll hardware key state */
+            uint8_t up_pressed   = (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_12) == GPIO_PIN_RESET);
+            uint8_t down_pressed = (HAL_GPIO_ReadPin(GPIOB, GPIO_PIN_14) == GPIO_PIN_RESET);
+            uint8_t cur_dir = up_pressed ? 1 : (down_pressed ? 2 : 0);
+
+            if (cur_dir != 0 && cur_dir == s_key_dir) {
+                uint32_t threshold = s_repeating ? COMM_REPEAT_FAST : COMM_REPEAT_INIT;
+                if (HAL_GetTick() - s_key_time >= threshold) {
+                    s_key_time  = HAL_GetTick();
+                    s_repeating = 1;
+                    if (cur_dir == 1) {
+                        if (s_addr < 255) s_addr++; else s_addr = 1;
+                    } else {
+                        if (s_addr > 1) s_addr--; else s_addr = 255;
+                    }
+                }
+            } else {
+                s_key_dir   = cur_dir;
+                s_key_time  = HAL_GetTick();
+                s_repeating = 0;
+            }
+
+            sc_pfb_t pfb;
+            sc_area_t dyn = {0, 20, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT};
+            sc_pfb_init_slices(&pfb, &dyn, MENU_BG);
+            do {
+                draw_comm(&pfb, s_addr);
+            } while (sc_pfb_next_slice(&pfb));
+            break;
+        }
+
+        case SC_EVENT_TYPE_CMD:
+        {
+            int cmd = e->dat.cmd;
+            if (cmd == CMD_UP || cmd == CMD_BACK) {
+                if (s_addr < 255) s_addr++; else s_addr = 1;
+            } else if (cmd == CMD_DOWN) {
+                if (s_addr > 1) s_addr--; else s_addr = 255;
+            } else if (cmd == CMD_ENTER) {
+                g_interface_manager.modbus_address = s_addr;
+                BL24C16_Write(0x0007, &s_addr, 1);
+                sc_create_task(0, ui_menu_task, 50);
+            }
+            break;
+        }
+
+        default:
+            break;
+    }
+}
+
 /* ==================================================================
  *  About screen (static, any key returns to menu)
  * ================================================================== */

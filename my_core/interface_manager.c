@@ -182,6 +182,14 @@ int8_t InterfaceManager_Init(void)
     }
     g_interface_manager.alarm_selected_item = 0;  // 默认选中报警开关
     g_interface_manager.need_refresh = 1;
+
+    // 从EEPROM读取Modbus从站地址，失败则使用默认值
+    uint8_t saved_modbus_addr;
+    if (BL24C16_Read(0x0007, &saved_modbus_addr, 1) == EEPROM_OK && saved_modbus_addr >= 1) {
+        g_interface_manager.modbus_address = saved_modbus_addr;
+    } else {
+        g_interface_manager.modbus_address = 1;  // 默认从站地址1
+    }
     
     // 初始化功率数据
     g_power_result.forward_power = 0.0f;
