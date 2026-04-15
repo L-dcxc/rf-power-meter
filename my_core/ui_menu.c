@@ -21,9 +21,9 @@ static void ui_cal_power_task(sc_event_t *e);
 static void ui_cal_freq_task(sc_event_t *e);
 static void ui_cal_complete_task(sc_event_t *e);
 static void dbg_read_adc(uint32_t *fwd_raw, uint32_t *ref_raw,
-                         float *fwd_v,  float *ref_v);
+                          float *fwd_v,  float *ref_v);
 
-static uint16_t g_cal_sel_w[4];
+static uint16_t g_cal_sel_w[3];
 static uint32_t g_cal_sel_anim_start;
 static float g_cal_sel_from_y;
 static float g_cal_sel_from_w;
@@ -55,6 +55,7 @@ static void draw_title(const char *text)
 static const char * const MENU_ITEMS[] = {
     "亮度设置",
     "标定设置",
+    "频率标定",
     "报警设置",
     "关于设备",
     "调试页面",
@@ -62,7 +63,7 @@ static const char * const MENU_ITEMS[] = {
     "通讯设置",
     "返回"
 };
-#define MENU_COUNT       8
+#define MENU_COUNT       9
 #define VISIBLE_COUNT    5
 #define ITEM_Y0          20
 #define ITEM_H           20
@@ -206,12 +207,19 @@ void ui_menu_task(sc_event_t *e)
                     switch (g_menu_cursor) {
                         case 0: sc_create_task(0, ui_brightness_task,  20); break;
                         case 1: sc_create_task(0, ui_calibration_task, 100); break;
-                        case 2: sc_create_task(0, ui_alarm_task,       50); break;
-                        case 3: sc_create_task(0, ui_about_task,      100); break;
-                        case 4: sc_create_task(0, ui_debug_task,       50); break;
-                        case 5: sc_create_task(0, ui_contact_task,     50); break;
-                        case 6: sc_create_task(0, ui_comm_task,        50); break;
-                        case 7: sc_create_task(0, ui_main_task,       100); break;
+                        case 2:
+                            g_calibration_state.is_single_step = 1;
+                            g_calibration_state.freq_cal_standalone = 1;
+                            Calibration_InitBandStep();
+                            Calibration_StartStep(CAL_STEP_BAND);
+                            sc_create_task(0, ui_cal_freq_task, 100);
+                            break;
+                        case 3: sc_create_task(0, ui_alarm_task,       50); break;
+                        case 4: sc_create_task(0, ui_about_task,      100); break;
+                        case 5: sc_create_task(0, ui_debug_task,       50); break;
+                        case 6: sc_create_task(0, ui_contact_task,     50); break;
+                        case 7: sc_create_task(0, ui_comm_task,        50); break;
+                        case 8: sc_create_task(0, ui_main_task,       100); break;
                         default: break;
                     }
                 }
@@ -630,7 +638,6 @@ static void cal_draw_header(sc_pfb_t *pfb, const char *title)
     sc_draw_Fill(pfb, 0, 19, SC_SCREEN_WIDTH, 1, C_WHITE, 255);
 }
 
-
 static void cal_format_power(char *buf, float power)
 {
     if (power >= 1000.0f)
@@ -658,19 +665,18 @@ static void cal_draw_entry(sc_pfb_t *pfb)
     else
         sc_draw_str(pfb, 85, 37, &lv_font_12, "NOT CAL", (uint16_t)0xF800, MENU_BG, NULL, ALIGN_NONE);
     sc_draw_Fill(pfb, 0, 54, SC_SCREEN_WIDTH, 1, C_DIM_GRAY, 255);
-    sc_draw_str(pfb, 3, 58, &lv_font_12, "3-Step Wizard:", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
-    sc_draw_str(pfb, 10, 76, &lv_font_12, "Zero->Power->Freq", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 3, 58, &lv_font_12, "2-Step Wizard:", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 10, 76, &lv_font_12, "Zero->Power", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
     sc_draw_str(pfb, 10, 94, &lv_font_12, "Power: FWD + REF", C_WHITE, MENU_BG, NULL, ALIGN_NONE);
     sc_draw_str(pfb, 5, 115, &lv_font_12, "OK:Start   UP:Back", MENU_HINT, MENU_BG, NULL, ALIGN_NONE);
 }
 
 static void cal_draw_select(sc_pfb_t *pfb, float bar_y, float bar_w)
 {
-    static const char * const items[4] = {
+    static const char * const items[3] = {
         "0. Full Cal",
         "1. Zero Cal",
-        "2. Power Cal",
-        "3. Freq Cal"
+        "2. Power Cal"
     };
     int i;
     int y;
@@ -681,7 +687,7 @@ static void cal_draw_select(sc_pfb_t *pfb, float bar_y, float bar_w)
 
     sc_draw_Fill(pfb, 8, by, bw, 17, C_WHITE, 255);
 
-    for (i = 0; i < 4; i++) {
+    for (i = 0; i < 3; i++) {
         y = 23 + i * 16;
         if (g_calibration_state.selected_step == (uint8_t)i) {
             sc_draw_str(pfb, 10, y, &lv_font_12, items[i], C_BLACK, C_WHITE, NULL, ALIGN_NONE);
@@ -721,7 +727,9 @@ static void cal_draw_zero(sc_pfb_t *pfb)
     /* ── Title bar ── */
     cal_draw_header(pfb, "Zero Cal");
     /* Step badge top-right */
-    sc_draw_str(pfb, 124, 3, &lv_font_12, "1/3", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 124, 3, &lv_font_12,
+                g_calibration_state.is_single_step ? "1/1" : "1/2",
+                C_CYAN, MENU_BG, NULL, ALIGN_NONE);
 
     /* ── Main instruction (single, no redundancy) ── */
     sc_draw_str(pfb, 5, 25, &lv_font_12, "REMOVE RF Input !", C_YELLOW, MENU_BG, NULL, ALIGN_NONE);
@@ -776,7 +784,9 @@ static void cal_draw_power(sc_pfb_t *pfb)
 
     /* ── Title bar + step badge ── */
     cal_draw_header(pfb, "Power Cal");
-    sc_draw_str(pfb, 124, 3, &lv_font_12, "2/3", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 124, 3, &lv_font_12,
+                g_calibration_state.is_single_step ? "1/1" : "2/2",
+                C_CYAN, MENU_BG, NULL, ALIGN_NONE);
 
     /* ── Target power (large, main focus) at y=22 in [20,40) ── */
     cal_format_power(pwr, g_calibration_state.target_power);
@@ -833,7 +843,9 @@ static void cal_draw_freq(sc_pfb_t *pfb)
 
     /* ── Title bar + step badge ── */
     cal_draw_header(pfb, "Freq Cal");
-    sc_draw_str(pfb, 124, 3, &lv_font_12, "3/3", C_CYAN, MENU_BG, NULL, ALIGN_NONE);
+    sc_draw_str(pfb, 124, 3, &lv_font_12,
+                g_calibration_state.freq_cal_standalone ? "1/1" : "3/3",
+                C_CYAN, MENU_BG, NULL, ALIGN_NONE);
 
     /* ── Target freq: large text, y=22 in [20,40) ── */
     sprintf(buf, "Cal:%.1f MHz", g_calibration_state.cal_frequency);
@@ -893,6 +905,7 @@ static void ui_calibration_task(sc_event_t *e)
     {
         case SC_EVENT_TYPE_INIT:
             Calibration_StartStep(CAL_STEP_CONFIRM);
+            g_calibration_state.freq_cal_standalone = 0;
             InterfaceManager_SwitchTo(INTERFACE_CALIBRATION);
             sc_clear(0, 0, SC_SCREEN_WIDTH, SC_SCREEN_HEIGHT, MENU_BG);
             break;
@@ -930,7 +943,6 @@ static void ui_cal_select_task(sc_event_t *e)
             g_cal_sel_w[0] = text_width(&lv_font_12, "0. Full Cal");
             g_cal_sel_w[1] = text_width(&lv_font_12, "1. Zero Cal");
             g_cal_sel_w[2] = text_width(&lv_font_12, "2. Power Cal");
-            g_cal_sel_w[3] = text_width(&lv_font_12, "3. Freq Cal");
             g_cal_sel_from_y = g_cal_sel_to_y = (float)(22 + g_calibration_state.selected_step * 16);
             g_cal_sel_from_w = g_cal_sel_to_w = (float)(g_cal_sel_w[g_calibration_state.selected_step] + 20);
             g_cal_sel_anim_start = HAL_GetTick();
@@ -963,31 +975,28 @@ static void ui_cal_select_task(sc_event_t *e)
                 float t = (el >= ANIM_MS) ? 1.0f : ease_out_cubic((float)el / ANIM_MS);
                 float cy = g_cal_sel_from_y + (g_cal_sel_to_y - g_cal_sel_from_y) * t;
                 float cw = g_cal_sel_from_w + (g_cal_sel_to_w - g_cal_sel_from_w) * t;
-                uint8_t next = (g_calibration_state.selected_step + 1) % 4;
+                uint8_t next = (g_calibration_state.selected_step + 1) % 3;
                 cal_select_start_anim(next, cy, cw);
             } else if (e->dat.cmd == CMD_ENTER) {
                 switch (g_calibration_state.selected_step) {
                     case 0:
                         g_calibration_state.is_single_step = 0;
+                        g_calibration_state.freq_cal_standalone = 0;
                         Calibration_StartStep(CAL_STEP_CONFIRM);
                         cal_switch_to(INTERFACE_CAL_CONFIRM);
                         break;
                     case 1:
                         g_calibration_state.is_single_step = 1;
+                        g_calibration_state.freq_cal_standalone = 0;
                         Calibration_StartStep(CAL_STEP_ZERO);
                         cal_switch_to(INTERFACE_CAL_ZERO);
                         break;
                     case 2:
                         g_calibration_state.is_single_step = 1;
+                        g_calibration_state.freq_cal_standalone = 0;
                         Calibration_InitPowerStep();
                         Calibration_StartStep(CAL_STEP_POWER);
                         cal_switch_to(INTERFACE_CAL_POWER);
-                        break;
-                    case 3:
-                        g_calibration_state.is_single_step = 1;
-                        Calibration_InitBandStep();
-                        Calibration_StartStep(CAL_STEP_BAND);
-                        cal_switch_to(INTERFACE_CAL_BAND);
                         break;
                     default:
                         break;
@@ -1159,10 +1168,6 @@ static void ui_cal_power_task(sc_event_t *e)
                     } else {
                         if (g_calibration_state.is_single_step) {
                             cal_switch_to(INTERFACE_CAL_STEP_SELECT);
-                        } else {
-                            Calibration_InitBandStep();
-                            Calibration_StartStep(CAL_STEP_BAND);
-                            cal_switch_to(INTERFACE_CAL_BAND);
                         }
                         break;
                     }
@@ -1223,8 +1228,14 @@ static void ui_cal_freq_task(sc_event_t *e)
 
         case SC_EVENT_TYPE_CMD:
             if (e->dat.cmd == CMD_UP || e->dat.cmd == CMD_BACK) {
-                Calibration_StartStep(CAL_STEP_POWER);
-                cal_switch_to(INTERFACE_CAL_POWER);
+                if (g_calibration_state.freq_cal_standalone) {
+                    g_calibration_state.freq_cal_standalone = 0;
+                    InterfaceManager_SwitchTo(INTERFACE_MENU);
+                    sc_create_task(0, ui_menu_task, 50);
+                } else {
+                    Calibration_StartStep(CAL_STEP_POWER);
+                    cal_switch_to(INTERFACE_CAL_POWER);
+                }
             } else if (e->dat.cmd == CMD_DOWN) {
                 g_calibration_state.cal_frequency += CAL_FREQ_STEP;
                 if (g_calibration_state.cal_frequency > CAL_MAX_FREQ)

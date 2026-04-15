@@ -908,10 +908,9 @@ void Calibration_ProcessSample(void)
                                     // 单步标定完成，返回步骤选择界面
                                     InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
                                 } else {
-                                    // 完整标定，进入下一步
-                                    Calibration_InitBandStep();  // 初始化频率标定状态
-                                    Calibration_StartStep(CAL_STEP_BAND);
-                                    InterfaceManager_SwitchTo(INTERFACE_CAL_BAND);
+                                    // 完整标定完成
+                                    Calibration_StartStep(CAL_STEP_COMPLETE);
+                                    InterfaceManager_SwitchTo(INTERFACE_CAL_COMPLETE);
                                 }
                                 return;
                             }
@@ -962,7 +961,10 @@ void Calibration_ProcessSample(void)
 
                         // 频率标定完成，保存数据
                         Calibration_SaveToEEPROM();
-                        if (g_calibration_state.is_single_step) {
+                        if (g_calibration_state.freq_cal_standalone) {
+                            g_calibration_state.freq_cal_standalone = 0;
+                            InterfaceManager_SwitchTo(INTERFACE_MENU);
+                        } else if (g_calibration_state.is_single_step) {
                             // 单步标定完成，返回步骤选择界面
                             InterfaceManager_SwitchTo(INTERFACE_CAL_STEP_SELECT);
                         } else {

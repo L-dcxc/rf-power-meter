@@ -3,7 +3,7 @@
 <title>Static Call Graph - [project_1\project_1.axf]</title></head>
 <body><HR>
 <H1>Static Call Graph for image project_1\project_1.axf</H1><HR>
-<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Tue Apr 14 11:37:05 2026
+<BR><P>#&#060CALLGRAPH&#062# ARM Linker, 5060528: Last Updated: Wed Apr 15 10:19:49 2026
 <BR><P>
 <H3>Maximum Stack Usage =        608 bytes + Unknown(Cycles, Untraceable Function Pointers)</H3><H3>
 Call chain for Maximum Stack Depth:</H3>
@@ -92,6 +92,7 @@ Function Pointers
  <LI><a href="#[47]">ui_cal_complete_task</a> from ui_menu.o(i.ui_cal_complete_task) referenced from ui_menu.o(i.cal_open_task)
  <LI><a href="#[43]">ui_cal_confirm_task</a> from ui_menu.o(i.ui_cal_confirm_task) referenced from ui_menu.o(i.cal_open_task)
  <LI><a href="#[46]">ui_cal_freq_task</a> from ui_menu.o(i.ui_cal_freq_task) referenced from ui_menu.o(i.cal_open_task)
+ <LI><a href="#[46]">ui_cal_freq_task</a> from ui_menu.o(i.ui_cal_freq_task) referenced from ui_menu.o(i.ui_menu_task)
  <LI><a href="#[45]">ui_cal_power_task</a> from ui_menu.o(i.ui_cal_power_task) referenced from ui_menu.o(i.cal_open_task)
  <LI><a href="#[42]">ui_cal_select_task</a> from ui_menu.o(i.ui_cal_select_task) referenced from ui_menu.o(i.cal_open_task)
  <LI><a href="#[44]">ui_cal_zero_task</a> from ui_menu.o(i.ui_cal_zero_task) referenced from ui_menu.o(i.cal_open_task)
@@ -108,6 +109,7 @@ Function Pointers
  <LI><a href="#[48]">ui_menu_task</a> from ui_menu.o(i.ui_menu_task) referenced from ui_menu.o(i.ui_alarm_task)
  <LI><a href="#[48]">ui_menu_task</a> from ui_menu.o(i.ui_menu_task) referenced from ui_menu.o(i.ui_brightness_task)
  <LI><a href="#[48]">ui_menu_task</a> from ui_menu.o(i.ui_menu_task) referenced from ui_menu.o(i.ui_cal_complete_task)
+ <LI><a href="#[48]">ui_menu_task</a> from ui_menu.o(i.ui_menu_task) referenced from ui_menu.o(i.ui_cal_freq_task)
  <LI><a href="#[48]">ui_menu_task</a> from ui_menu.o(i.ui_menu_task) referenced from ui_menu.o(i.ui_calibration_task)
  <LI><a href="#[48]">ui_menu_task</a> from ui_menu.o(i.ui_menu_task) referenced from ui_menu.o(i.ui_comm_task)
  <LI><a href="#[48]">ui_menu_task</a> from ui_menu.o(i.ui_menu_task) referenced from ui_menu.o(i.ui_contact_task)
@@ -712,9 +714,7 @@ Global Symbols
 </UL>
 <BR>[Calls]<UL><LI><a href="#[82]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_NormalizeFrequency
 </UL>
-<BR>[Called By]<UL><LI><a href="#[87]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_ProcessSample
-<LI><a href="#[42]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_cal_select_task
-<LI><a href="#[45]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_cal_power_task
+<BR>[Called By]<UL><LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_menu_task
 </UL>
 
 <P><STRONG><a name="[90]"></a>Calibration_InitPowerStep</STRONG> (Thumb, 16 bytes, Stack size 0 bytes, interface_manager.o(i.Calibration_InitPowerStep))
@@ -733,7 +733,7 @@ Global Symbols
 <BR>[Called By]<UL><LI><a href="#[80]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_Init
 </UL>
 
-<P><STRONG><a name="[87]"></a>Calibration_ProcessSample</STRONG> (Thumb, 1310 bytes, Stack size 96 bytes, interface_manager.o(i.Calibration_ProcessSample))
+<P><STRONG><a name="[87]"></a>Calibration_ProcessSample</STRONG> (Thumb, 1312 bytes, Stack size 96 bytes, interface_manager.o(i.Calibration_ProcessSample))
 <BR><BR>[Stack]<UL><LI>Max Depth = 200<LI>Call Chain = Calibration_ProcessSample &rArr; Calibration_SaveToEEPROM &rArr; BL24C16_Write &rArr; BL24C16_WritePage &rArr; BL24C16_WaitReady &rArr; SoftI2C_WriteByte &rArr; SoftI2C_Delay
 </UL>
 <BR>[Calls]<UL><LI><a href="#[5c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_ui2f
@@ -753,7 +753,6 @@ Global Symbols
 <LI><a href="#[91]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_StartStep
 <LI><a href="#[8e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_SaveToEEPROM
 <LI><a href="#[90]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_InitPowerStep
-<LI><a href="#[83]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_InitBandStep
 <LI><a href="#[7d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_CalculatePowerFromTable
 <LI><a href="#[8c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__2printf
 </UL>
@@ -779,6 +778,7 @@ Global Symbols
 <LI><a href="#[46]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_cal_freq_task
 <LI><a href="#[43]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_cal_confirm_task
 <LI><a href="#[14e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cal_power_exit
+<LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_menu_task
 </UL>
 
 <P><STRONG><a name="[19]"></a>DMA1_Channel1_IRQHandler</STRONG> (Thumb, 6 bytes, Stack size 0 bytes, stm32f1xx_it.o(i.DMA1_Channel1_IRQHandler))
@@ -2269,6 +2269,7 @@ Global Symbols
 <LI><a href="#[4b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_alarm_task
 <LI><a href="#[4c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_about_task
 <LI><a href="#[41]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_calibration_task
+<LI><a href="#[46]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_cal_freq_task
 <LI><a href="#[47]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_cal_complete_task
 <LI><a href="#[14c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cal_open_task
 <LI><a href="#[48]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_menu_task
@@ -2562,7 +2563,7 @@ Global Symbols
 <LI> ui_menu.o(i.ui_cal_complete_task)
 <LI> ui_menu.o(i.ui_menu_task)
 </UL>
-<P><STRONG><a name="[48]"></a>ui_menu_task</STRONG> (Thumb, 468 bytes, Stack size 72 bytes, ui_menu.o(i.ui_menu_task))
+<P><STRONG><a name="[48]"></a>ui_menu_task</STRONG> (Thumb, 490 bytes, Stack size 72 bytes, ui_menu.o(i.ui_menu_task))
 <BR><BR>[Stack]<UL><LI>Max Depth = 560<LI>Call Chain = ui_menu_task &rArr; draw_menu_items &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[14d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_create_task
@@ -2575,18 +2576,21 @@ Global Symbols
 <LI><a href="#[114]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_clear
 <LI><a href="#[13b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_pfb_next_slice
 <LI><a href="#[132]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_pfb_init_slices
+<LI><a href="#[91]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_StartStep
+<LI><a href="#[83]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_InitBandStep
 <LI><a href="#[166]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;text_width
 <LI><a href="#[165]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;start_anim
 <LI><a href="#[141]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ease_out_cubic
 <LI><a href="#[157]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;draw_title
 <LI><a href="#[156]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;draw_menu_items
 </UL>
-<BR>[Address Reference Count : 10]<UL><LI> ui_main.o(i.ui_main_task)
+<BR>[Address Reference Count : 11]<UL><LI> ui_main.o(i.ui_main_task)
 <LI> ui_menu.o(i.cal_open_task)
 <LI> ui_menu.o(i.ui_about_task)
 <LI> ui_menu.o(i.ui_alarm_task)
 <LI> ui_menu.o(i.ui_brightness_task)
 <LI> ui_menu.o(i.ui_cal_complete_task)
+<LI> ui_menu.o(i.ui_cal_freq_task)
 <LI> ui_menu.o(i.ui_calibration_task)
 <LI> ui_menu.o(i.ui_comm_task)
 <LI> ui_menu.o(i.ui_contact_task)
@@ -2937,7 +2941,7 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[41]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_calibration_task
 </UL>
 
-<P><STRONG><a name="[147]"></a>cal_draw_freq</STRONG> (Thumb, 490 bytes, Stack size 104 bytes, ui_menu.o(i.cal_draw_freq))
+<P><STRONG><a name="[147]"></a>cal_draw_freq</STRONG> (Thumb, 494 bytes, Stack size 104 bytes, ui_menu.o(i.cal_draw_freq))
 <BR><BR>[Stack]<UL><LI>Max Depth = 544<LI>Call Chain = cal_draw_freq &rArr; cal_draw_header &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[5c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_ui2f
@@ -2969,7 +2973,7 @@ Local Symbols
 <LI><a href="#[143]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cal_draw_complete
 </UL>
 
-<P><STRONG><a name="[148]"></a>cal_draw_power</STRONG> (Thumb, 614 bytes, Stack size 112 bytes, ui_menu.o(i.cal_draw_power))
+<P><STRONG><a name="[148]"></a>cal_draw_power</STRONG> (Thumb, 624 bytes, Stack size 112 bytes, ui_menu.o(i.cal_draw_power))
 <BR><BR>[Stack]<UL><LI>Max Depth = 552<LI>Call Chain = cal_draw_power &rArr; cal_draw_header &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[5a]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fdiv
@@ -2995,7 +2999,7 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[42]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_cal_select_task
 </UL>
 
-<P><STRONG><a name="[14b]"></a>cal_draw_zero</STRONG> (Thumb, 474 bytes, Stack size 104 bytes, ui_menu.o(i.cal_draw_zero))
+<P><STRONG><a name="[14b]"></a>cal_draw_zero</STRONG> (Thumb, 508 bytes, Stack size 104 bytes, ui_menu.o(i.cal_draw_zero))
 <BR><BR>[Stack]<UL><LI>Max Depth = 544<LI>Call Chain = cal_draw_zero &rArr; cal_draw_header &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[13f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_draw_str
@@ -3102,7 +3106,7 @@ Local Symbols
 <BR>[Called By]<UL><LI><a href="#[4f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ui_comm_task
 </UL>
 
-<P><STRONG><a name="[156]"></a>draw_menu_items</STRONG> (Thumb, 272 bytes, Stack size 80 bytes, ui_menu.o(i.draw_menu_items))
+<P><STRONG><a name="[156]"></a>draw_menu_items</STRONG> (Thumb, 282 bytes, Stack size 80 bytes, ui_menu.o(i.draw_menu_items))
 <BR><BR>[Stack]<UL><LI>Max Depth = 488<LI>Call Chain = draw_menu_items &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fadd
@@ -3177,10 +3181,11 @@ Local Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> ui_menu.o(i.cal_open_task)
 </UL>
-<P><STRONG><a name="[46]"></a>ui_cal_freq_task</STRONG> (Thumb, 246 bytes, Stack size 56 bytes, ui_menu.o(i.ui_cal_freq_task))
+<P><STRONG><a name="[46]"></a>ui_cal_freq_task</STRONG> (Thumb, 274 bytes, Stack size 56 bytes, ui_menu.o(i.ui_cal_freq_task))
 <BR><BR>[Stack]<UL><LI>Max Depth = 600<LI>Call Chain = ui_cal_freq_task &rArr; cal_draw_freq &rArr; cal_draw_header &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_ReadPin
+<LI><a href="#[14d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_create_task
 <LI><a href="#[55]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_fadd
 <LI><a href="#[114]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_clear
 <LI><a href="#[13b]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_pfb_next_slice
@@ -3192,9 +3197,10 @@ Local Symbols
 <LI><a href="#[14c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cal_open_task
 <LI><a href="#[147]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cal_draw_freq
 </UL>
-<BR>[Address Reference Count : 1]<UL><LI> ui_menu.o(i.cal_open_task)
+<BR>[Address Reference Count : 2]<UL><LI> ui_menu.o(i.cal_open_task)
+<LI> ui_menu.o(i.ui_menu_task)
 </UL>
-<P><STRONG><a name="[45]"></a>ui_cal_power_task</STRONG> (Thumb, 320 bytes, Stack size 48 bytes, ui_menu.o(i.ui_cal_power_task))
+<P><STRONG><a name="[45]"></a>ui_cal_power_task</STRONG> (Thumb, 308 bytes, Stack size 48 bytes, ui_menu.o(i.ui_cal_power_task))
 <BR><BR>[Stack]<UL><LI>Max Depth = 600<LI>Call Chain = ui_cal_power_task &rArr; cal_draw_power &rArr; cal_draw_header &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[e0]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;HAL_GPIO_ReadPin
@@ -3205,7 +3211,6 @@ Local Symbols
 <LI><a href="#[92]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_SwitchTo
 <LI><a href="#[91]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_StartStep
 <LI><a href="#[87]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_ProcessSample
-<LI><a href="#[83]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_InitBandStep
 <LI><a href="#[14f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cal_switch_to
 <LI><a href="#[14e]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cal_power_exit
 <LI><a href="#[14c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cal_open_task
@@ -3213,7 +3218,7 @@ Local Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> ui_menu.o(i.cal_open_task)
 </UL>
-<P><STRONG><a name="[42]"></a>ui_cal_select_task</STRONG> (Thumb, 504 bytes, Stack size 64 bytes, ui_menu.o(i.ui_cal_select_task))
+<P><STRONG><a name="[42]"></a>ui_cal_select_task</STRONG> (Thumb, 490 bytes, Stack size 64 bytes, ui_menu.o(i.ui_cal_select_task))
 <BR><BR>[Stack]<UL><LI>Max Depth = 560<LI>Call Chain = ui_cal_select_task &rArr; cal_draw_select &rArr; cal_draw_header &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[5c]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;__aeabi_ui2f
@@ -3228,7 +3233,6 @@ Local Symbols
 <LI><a href="#[92]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;InterfaceManager_SwitchTo
 <LI><a href="#[91]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_StartStep
 <LI><a href="#[90]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_InitPowerStep
-<LI><a href="#[83]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;Calibration_InitBandStep
 <LI><a href="#[166]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;text_width
 <LI><a href="#[141]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;ease_out_cubic
 <LI><a href="#[14f]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;cal_switch_to
@@ -3250,8 +3254,8 @@ Local Symbols
 </UL>
 <BR>[Address Reference Count : 1]<UL><LI> ui_menu.o(i.cal_open_task)
 </UL>
-<P><STRONG><a name="[41]"></a>ui_calibration_task</STRONG> (Thumb, 132 bytes, Stack size 40 bytes, ui_menu.o(i.ui_calibration_task))
-<BR><BR>[Stack]<UL><LI>Max Depth = 520<LI>Call Chain = ui_calibration_task &rArr; cal_draw_entry &rArr; cal_draw_header &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
+<P><STRONG><a name="[41]"></a>ui_calibration_task</STRONG> (Thumb, 136 bytes, Stack size 48 bytes, ui_menu.o(i.ui_calibration_task))
+<BR><BR>[Stack]<UL><LI>Max Depth = 528<LI>Call Chain = ui_calibration_task &rArr; cal_draw_entry &rArr; cal_draw_header &rArr; sc_draw_str &rArr; sc_draw_lv_letter &rArr; sc_pfb_next_slice &rArr; sc_pfb_refresh
 </UL>
 <BR>[Calls]<UL><LI><a href="#[14d]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_create_task
 <LI><a href="#[114]">&gt;&gt;</a>&nbsp;&nbsp;&nbsp;sc_clear
